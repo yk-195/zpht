@@ -1,0 +1,3738 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "Questionnaire_Service",
+    "version": "1.0.2",
+    "description": "求职申请表问卷服务插件，适配当前 DTO 分层 API，仅提供四个工具：写入初始字段 → 生成问卷并返回候选人填写链接 → 接收候选人字段 → 返回所有字段。已有 app_id 可直接生成或读取。候选人网页提交与插件提交使用同一申请记录。所有响应为 {ok,data} 或 {ok:false,error}。需要在平台鉴权配置中设置 X-API-Key，密钥不得作为工具输入、示例或会话内容输出。"
+  },
+  "servers": [
+    {
+      "url": "https://desert-created-tours-pharmacies.trycloudflare.com",
+      "x-plugin-headers": {
+        "Content-Type": [
+          "application/json"
+        ]
+      }
+    }
+  ],
+  "security": [
+    {
+      "apiKey": []
+    }
+  ],
+  "paths": {
+    "/api/v1/questionnaires": {
+      "post": {
+        "tags": [
+          "Questionnaire_Service"
+        ],
+        "summary": "1. 写入初始字段",
+        "operationId": "write_initial_fields",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "properties": {
+                  "app_id": {
+                    "type": "string",
+                    "maxLength": 64,
+                    "minLength": 1,
+                    "pattern": "^[A-Za-z0-9_-]+$",
+                    "title": "App Id",
+                    "x-visible": true,
+                    "description": "可省略，首次写入自动生成；更新时使用已有 app_id。1～64 位，只允许英文字母、数字、下划线、连字符。",
+                    "nullable": true
+                  },
+                  "main": {
+                    "additionalProperties": {
+                      "anyOf": [
+                        {
+                          "type": "string",
+                          "nullable": true
+                        },
+                        {
+                          "type": "integer"
+                        },
+                        {
+                          "type": "number"
+                        }
+                      ]
+                    },
+                    "type": "object",
+                    "title": "Main",
+                    "x-visible": true,
+                    "description": "中文主表字段名到值的映射，字段值只允许字符串、数字或 null；不要嵌套对象。常用字段：姓名、应聘职位、性别、出生日期、毕业院校、毕业时间、最高学历、专业、身份证号、手机号码、婚姻状况、健康状况、紧急联系人姓名、紧急联系人关系、紧急联系人电话。其余字段和枚举以 generate_questionnaire 返回的 data.contract 为准。日期使用 YYYY-MM-DD。"
+                  },
+                  "details": {
+                    "additionalProperties": {
+                      "items": {
+                        "additionalProperties": {
+                          "anyOf": [
+                            {
+                              "type": "string",
+                              "nullable": true
+                            },
+                            {
+                              "type": "integer"
+                            },
+                            {
+                              "type": "number"
+                            }
+                          ]
+                        },
+                        "type": "object"
+                      },
+                      "type": "array"
+                    },
+                    "type": "object",
+                    "title": "Details",
+                    "x-visible": true,
+                    "description": "明细区名称到行数组的映射：家庭成员明细（默认最多5行）、学历培训明细（最多2行）、资历专业资格明细（最多2行）、工作经验明细（最多4行）。每行以契约中文字段名为键，值为字符串、数字或 null。实际字段与行数上限以问卷 contract 为准。"
+                  }
+                },
+                "additionalProperties": false,
+                "type": "object",
+                "title": "WriteFieldsRequest",
+                "x-visible": true
+              },
+              "example": {
+                "main": {
+                  "姓名": "示例候选人",
+                  "专业": "计算机"
+                },
+                "details": {}
+              }
+            }
+          },
+          "description": "仅提交初始主表和明细字段；更新时附上 app_id。"
+        },
+        "responses": {
+          "200": {
+            "description": "操作成功，data 为本接口声明的 DTO。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "ok": {
+                      "type": "boolean",
+                      "title": "Ok",
+                      "default": true,
+                      "x-visible": true,
+                      "enum": [
+                        true
+                      ]
+                    },
+                    "data": {
+                      "properties": {
+                        "app_id": {
+                          "type": "string",
+                          "title": "App Id",
+                          "x-visible": true
+                        },
+                        "name": {
+                          "type": "string",
+                          "title": "Name",
+                          "x-visible": true
+                        },
+                        "status": {
+                          "type": "string",
+                          "enum": [
+                            "pending",
+                            "submitted",
+                            "completed",
+                            "void"
+                          ],
+                          "title": "Status",
+                          "x-visible": true
+                        },
+                        "version": {
+                          "type": "integer",
+                          "title": "Version",
+                          "x-visible": true
+                        },
+                        "main": {
+                          "additionalProperties": {
+                            "anyOf": [
+                              {
+                                "type": "string",
+                                "nullable": true
+                              },
+                              {
+                                "type": "integer"
+                              },
+                              {
+                                "type": "number"
+                              }
+                            ]
+                          },
+                          "type": "object",
+                          "title": "Main",
+                          "x-visible": true
+                        },
+                        "details": {
+                          "additionalProperties": {
+                            "items": {
+                              "additionalProperties": {
+                                "anyOf": [
+                                  {
+                                    "type": "string",
+                                    "nullable": true
+                                  },
+                                  {
+                                    "type": "integer"
+                                  },
+                                  {
+                                    "type": "number"
+                                  }
+                                ]
+                              },
+                              "type": "object"
+                            },
+                            "type": "array"
+                          },
+                          "type": "object",
+                          "title": "Details",
+                          "x-visible": true
+                        },
+                        "missing_fields": {
+                          "items": {
+                            "type": "string"
+                          },
+                          "type": "array",
+                          "title": "Missing Fields",
+                          "x-visible": true
+                        },
+                        "incomplete_fields": {
+                          "additionalProperties": {
+                            "type": "string"
+                          },
+                          "type": "object",
+                          "title": "Incomplete Fields",
+                          "x-visible": true
+                        },
+                        "progress": {
+                          "properties": {
+                            "total_fields": {
+                              "type": "integer",
+                              "title": "Total Fields",
+                              "x-visible": true
+                            },
+                            "filled_fields": {
+                              "type": "integer",
+                              "title": "Filled Fields",
+                              "x-visible": true
+                            },
+                            "missing_fields": {
+                              "type": "integer",
+                              "title": "Missing Fields",
+                              "x-visible": true
+                            },
+                            "required_total": {
+                              "type": "integer",
+                              "title": "Required Total",
+                              "x-visible": true
+                            },
+                            "required_filled": {
+                              "type": "integer",
+                              "title": "Required Filled",
+                              "x-visible": true
+                            },
+                            "completion_rate": {
+                              "type": "number",
+                              "title": "Completion Rate",
+                              "x-visible": true
+                            }
+                          },
+                          "additionalProperties": false,
+                          "type": "object",
+                          "required": [
+                            "total_fields",
+                            "filled_fields",
+                            "missing_fields",
+                            "required_total",
+                            "required_filled",
+                            "completion_rate"
+                          ],
+                          "title": "Progress",
+                          "x-visible": true
+                        },
+                        "created_at": {
+                          "type": "string",
+                          "title": "Created At",
+                          "x-visible": true,
+                          "nullable": true
+                        },
+                        "updated_at": {
+                          "type": "string",
+                          "title": "Updated At",
+                          "x-visible": true,
+                          "nullable": true
+                        },
+                        "submitted_at": {
+                          "type": "string",
+                          "title": "Submitted At",
+                          "x-visible": true,
+                          "nullable": true
+                        },
+                        "created": {
+                          "type": "boolean",
+                          "title": "Created",
+                          "x-visible": true
+                        },
+                        "missing_count": {
+                          "type": "integer",
+                          "title": "Missing Count",
+                          "readOnly": true,
+                          "x-visible": true
+                        },
+                        "incomplete_count": {
+                          "type": "integer",
+                          "title": "Incomplete Count",
+                          "readOnly": true,
+                          "x-visible": true
+                        }
+                      },
+                      "additionalProperties": false,
+                      "type": "object",
+                      "required": [
+                        "app_id",
+                        "name",
+                        "status",
+                        "version",
+                        "main",
+                        "details",
+                        "missing_fields",
+                        "incomplete_fields",
+                        "progress",
+                        "created_at",
+                        "updated_at",
+                        "submitted_at",
+                        "created",
+                        "missing_count",
+                        "incomplete_count"
+                      ],
+                      "title": "WriteFieldsResponse",
+                      "x-visible": true
+                    }
+                  },
+                  "additionalProperties": false,
+                  "type": "object",
+                  "required": [
+                    "data"
+                  ],
+                  "title": "Envelope[WriteFieldsResponse]",
+                  "x-visible": true
+                }
+              }
+            }
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "ok": {
+                      "type": "boolean",
+                      "title": "Ok",
+                      "default": false,
+                      "x-visible": true,
+                      "enum": [
+                        false
+                      ]
+                    },
+                    "error": {
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "title": "Code",
+                          "x-visible": true
+                        },
+                        "message": {
+                          "type": "string",
+                          "title": "Message",
+                          "x-visible": true
+                        },
+                        "details": {
+                          "items": {
+                            "properties": {
+                              "field": {
+                                "type": "string",
+                                "title": "Field",
+                                "default": "",
+                                "x-visible": true
+                              },
+                              "message": {
+                                "type": "string",
+                                "title": "Message",
+                                "x-visible": true
+                              }
+                            },
+                            "additionalProperties": false,
+                            "type": "object",
+                            "required": [
+                              "message"
+                            ],
+                            "title": "ErrorDetail",
+                            "x-visible": true
+                          },
+                          "type": "array",
+                          "title": "Details",
+                          "x-visible": true
+                        }
+                      },
+                      "additionalProperties": false,
+                      "type": "object",
+                      "required": [
+                        "code",
+                        "message"
+                      ],
+                      "title": "ErrorBody",
+                      "x-visible": true
+                    }
+                  },
+                  "additionalProperties": false,
+                  "type": "object",
+                  "required": [
+                    "error"
+                  ],
+                  "title": "ErrorEnvelope",
+                  "x-visible": true
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "ok": {
+                      "type": "boolean",
+                      "title": "Ok",
+                      "default": false,
+                      "x-visible": true,
+                      "enum": [
+                        false
+                      ]
+                    },
+                    "error": {
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "title": "Code",
+                          "x-visible": true
+                        },
+                        "message": {
+                          "type": "string",
+                          "title": "Message",
+                          "x-visible": true
+                        },
+                        "details": {
+                          "items": {
+                            "properties": {
+                              "field": {
+                                "type": "string",
+                                "title": "Field",
+                                "default": "",
+                                "x-visible": true
+                              },
+                              "message": {
+                                "type": "string",
+                                "title": "Message",
+                                "x-visible": true
+                              }
+                            },
+                            "additionalProperties": false,
+                            "type": "object",
+                            "required": [
+                              "message"
+                            ],
+                            "title": "ErrorDetail",
+                            "x-visible": true
+                          },
+                          "type": "array",
+                          "title": "Details",
+                          "x-visible": true
+                        }
+                      },
+                      "additionalProperties": false,
+                      "type": "object",
+                      "required": [
+                        "code",
+                        "message"
+                      ],
+                      "title": "ErrorBody",
+                      "x-visible": true
+                    }
+                  },
+                  "additionalProperties": false,
+                  "type": "object",
+                  "required": [
+                    "error"
+                  ],
+                  "title": "ErrorEnvelope",
+                  "x-visible": true
+                }
+              }
+            },
+            "description": "接口密钥缺失或不正确，请检查平台 X-API-Key 鉴权配置。"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "ok": {
+                      "type": "boolean",
+                      "title": "Ok",
+                      "default": false,
+                      "x-visible": true,
+                      "enum": [
+                        false
+                      ]
+                    },
+                    "error": {
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "title": "Code",
+                          "x-visible": true
+                        },
+                        "message": {
+                          "type": "string",
+                          "title": "Message",
+                          "x-visible": true
+                        },
+                        "details": {
+                          "items": {
+                            "properties": {
+                              "field": {
+                                "type": "string",
+                                "title": "Field",
+                                "default": "",
+                                "x-visible": true
+                              },
+                              "message": {
+                                "type": "string",
+                                "title": "Message",
+                                "x-visible": true
+                              }
+                            },
+                            "additionalProperties": false,
+                            "type": "object",
+                            "required": [
+                              "message"
+                            ],
+                            "title": "ErrorDetail",
+                            "x-visible": true
+                          },
+                          "type": "array",
+                          "title": "Details",
+                          "x-visible": true
+                        }
+                      },
+                      "additionalProperties": false,
+                      "type": "object",
+                      "required": [
+                        "code",
+                        "message"
+                      ],
+                      "title": "ErrorBody",
+                      "x-visible": true
+                    }
+                  },
+                  "additionalProperties": false,
+                  "type": "object",
+                  "required": [
+                    "error"
+                  ],
+                  "title": "ErrorEnvelope",
+                  "x-visible": true
+                }
+              }
+            },
+            "description": "申请编号不存在。"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "ok": {
+                      "type": "boolean",
+                      "title": "Ok",
+                      "default": false,
+                      "x-visible": true,
+                      "enum": [
+                        false
+                      ]
+                    },
+                    "error": {
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "title": "Code",
+                          "x-visible": true
+                        },
+                        "message": {
+                          "type": "string",
+                          "title": "Message",
+                          "x-visible": true
+                        },
+                        "details": {
+                          "items": {
+                            "properties": {
+                              "field": {
+                                "type": "string",
+                                "title": "Field",
+                                "default": "",
+                                "x-visible": true
+                              },
+                              "message": {
+                                "type": "string",
+                                "title": "Message",
+                                "x-visible": true
+                              }
+                            },
+                            "additionalProperties": false,
+                            "type": "object",
+                            "required": [
+                              "message"
+                            ],
+                            "title": "ErrorDetail",
+                            "x-visible": true
+                          },
+                          "type": "array",
+                          "title": "Details",
+                          "x-visible": true
+                        }
+                      },
+                      "additionalProperties": false,
+                      "type": "object",
+                      "required": [
+                        "code",
+                        "message"
+                      ],
+                      "title": "ErrorBody",
+                      "x-visible": true
+                    }
+                  },
+                  "additionalProperties": false,
+                  "type": "object",
+                  "required": [
+                    "error"
+                  ],
+                  "title": "ErrorEnvelope",
+                  "x-visible": true
+                }
+              }
+            },
+            "description": "申请作废、重复提交限制、提交 ID 冲突或并发更新冲突。"
+          },
+          "410": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "ok": {
+                      "type": "boolean",
+                      "title": "Ok",
+                      "default": false,
+                      "x-visible": true,
+                      "enum": [
+                        false
+                      ]
+                    },
+                    "error": {
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "title": "Code",
+                          "x-visible": true
+                        },
+                        "message": {
+                          "type": "string",
+                          "title": "Message",
+                          "x-visible": true
+                        },
+                        "details": {
+                          "items": {
+                            "properties": {
+                              "field": {
+                                "type": "string",
+                                "title": "Field",
+                                "default": "",
+                                "x-visible": true
+                              },
+                              "message": {
+                                "type": "string",
+                                "title": "Message",
+                                "x-visible": true
+                              }
+                            },
+                            "additionalProperties": false,
+                            "type": "object",
+                            "required": [
+                              "message"
+                            ],
+                            "title": "ErrorDetail",
+                            "x-visible": true
+                          },
+                          "type": "array",
+                          "title": "Details",
+                          "x-visible": true
+                        }
+                      },
+                      "additionalProperties": false,
+                      "type": "object",
+                      "required": [
+                        "code",
+                        "message"
+                      ],
+                      "title": "ErrorBody",
+                      "x-visible": true
+                    }
+                  },
+                  "additionalProperties": false,
+                  "type": "object",
+                  "required": [
+                    "error"
+                  ],
+                  "title": "ErrorEnvelope",
+                  "x-visible": true
+                }
+              }
+            },
+            "description": "Gone"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "ok": {
+                      "type": "boolean",
+                      "title": "Ok",
+                      "default": false,
+                      "x-visible": true,
+                      "enum": [
+                        false
+                      ]
+                    },
+                    "error": {
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "title": "Code",
+                          "x-visible": true
+                        },
+                        "message": {
+                          "type": "string",
+                          "title": "Message",
+                          "x-visible": true
+                        },
+                        "details": {
+                          "items": {
+                            "properties": {
+                              "field": {
+                                "type": "string",
+                                "title": "Field",
+                                "default": "",
+                                "x-visible": true
+                              },
+                              "message": {
+                                "type": "string",
+                                "title": "Message",
+                                "x-visible": true
+                              }
+                            },
+                            "additionalProperties": false,
+                            "type": "object",
+                            "required": [
+                              "message"
+                            ],
+                            "title": "ErrorDetail",
+                            "x-visible": true
+                          },
+                          "type": "array",
+                          "title": "Details",
+                          "x-visible": true
+                        }
+                      },
+                      "additionalProperties": false,
+                      "type": "object",
+                      "required": [
+                        "code",
+                        "message"
+                      ],
+                      "title": "ErrorBody",
+                      "x-visible": true
+                    }
+                  },
+                  "additionalProperties": false,
+                  "type": "object",
+                  "required": [
+                    "error"
+                  ],
+                  "title": "ErrorEnvelope",
+                  "x-visible": true
+                }
+              }
+            },
+            "description": "请求字段、字段类型或业务取值不合法；error.details 提供校验说明。"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "ok": {
+                      "type": "boolean",
+                      "title": "Ok",
+                      "default": false,
+                      "x-visible": true,
+                      "enum": [
+                        false
+                      ]
+                    },
+                    "error": {
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "title": "Code",
+                          "x-visible": true
+                        },
+                        "message": {
+                          "type": "string",
+                          "title": "Message",
+                          "x-visible": true
+                        },
+                        "details": {
+                          "items": {
+                            "properties": {
+                              "field": {
+                                "type": "string",
+                                "title": "Field",
+                                "default": "",
+                                "x-visible": true
+                              },
+                              "message": {
+                                "type": "string",
+                                "title": "Message",
+                                "x-visible": true
+                              }
+                            },
+                            "additionalProperties": false,
+                            "type": "object",
+                            "required": [
+                              "message"
+                            ],
+                            "title": "ErrorDetail",
+                            "x-visible": true
+                          },
+                          "type": "array",
+                          "title": "Details",
+                          "x-visible": true
+                        }
+                      },
+                      "additionalProperties": false,
+                      "type": "object",
+                      "required": [
+                        "code",
+                        "message"
+                      ],
+                      "title": "ErrorBody",
+                      "x-visible": true
+                    }
+                  },
+                  "additionalProperties": false,
+                  "type": "object",
+                  "required": [
+                    "error"
+                  ],
+                  "title": "ErrorEnvelope",
+                  "x-visible": true
+                }
+              }
+            },
+            "description": "Internal Server Error"
+          }
+        },
+        "description": "写入简历解析或手工录入的初始字段。仅支持 app_id、main、details；不得发送 name、source、overwrite、issue_token、missing_fields、incomplete_fields，也不得将中文字段放在请求顶层。不传 app_id 时生成 APP-<UUID>；传已有编号时按非空值合并，不能清空已有字段。至少提供一个有效初始字段。保存响应 data.app_id，随后调用 generate_questionnaire 取得填写链接；本接口不返回链接或二维码。"
+      }
+    },
+    "/api/v1/questionnaires/{app_id}/questionnaire": {
+      "post": {
+        "tags": [
+          "Questionnaire_Service"
+        ],
+        "summary": "2. 生成并返回问卷",
+        "operationId": "generate_questionnaire",
+        "parameters": [
+          {
+            "name": "app_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "App Id",
+              "description": "申请编号，使用 write_initial_fields 返回的 data.app_id，或已有申请编号。",
+              "x-visible": true
+            },
+            "description": "申请编号，使用 write_initial_fields 返回的 data.app_id，或已有申请编号。"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "操作成功，data 为本接口声明的 DTO。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "ok": {
+                      "type": "boolean",
+                      "title": "Ok",
+                      "default": true,
+                      "x-visible": true,
+                      "enum": [
+                        true
+                      ]
+                    },
+                    "data": {
+                      "properties": {
+                        "app_id": {
+                          "type": "string",
+                          "title": "App Id",
+                          "x-visible": true
+                        },
+                        "name": {
+                          "type": "string",
+                          "title": "Name",
+                          "x-visible": true
+                        },
+                        "status": {
+                          "type": "string",
+                          "title": "Status",
+                          "x-visible": true
+                        },
+                        "questions": {
+                          "items": {
+                            "properties": {
+                              "name": {
+                                "type": "string",
+                                "title": "Name",
+                                "x-visible": true
+                              },
+                              "label": {
+                                "type": "string",
+                                "title": "Label",
+                                "x-visible": true
+                              },
+                              "kind": {
+                                "type": "string",
+                                "title": "Kind",
+                                "x-visible": true
+                              },
+                              "group": {
+                                "type": "string",
+                                "title": "Group",
+                                "default": "基本信息",
+                                "x-visible": true
+                              },
+                              "required": {
+                                "type": "boolean",
+                                "title": "Required",
+                                "default": false,
+                                "x-visible": true
+                              },
+                              "options": {
+                                "items": {
+                                  "type": "string"
+                                },
+                                "type": "array",
+                                "title": "Options",
+                                "x-visible": true,
+                                "nullable": true
+                              },
+                              "hint": {
+                                "type": "string",
+                                "title": "Hint",
+                                "default": "",
+                                "x-visible": true
+                              },
+                              "current_value": {
+                                "type": "string",
+                                "title": "Current Value",
+                                "default": "",
+                                "x-visible": true
+                              },
+                              "reason": {
+                                "type": "string",
+                                "title": "Reason",
+                                "default": "",
+                                "x-visible": true
+                              },
+                              "reason_text": {
+                                "type": "string",
+                                "title": "Reason Text",
+                                "default": "",
+                                "x-visible": true
+                              },
+                              "section": {
+                                "type": "string",
+                                "title": "Section",
+                                "default": "main",
+                                "x-visible": true
+                              },
+                              "rows": {
+                                "items": {
+                                  "additionalProperties": {
+                                    "anyOf": [
+                                      {
+                                        "type": "string",
+                                        "nullable": true
+                                      },
+                                      {
+                                        "type": "integer"
+                                      },
+                                      {
+                                        "type": "number"
+                                      }
+                                    ]
+                                  },
+                                  "type": "object"
+                                },
+                                "type": "array",
+                                "title": "Rows",
+                                "description": "明细区题目：已导入的行（原样回显，供修改与继续补充）",
+                                "x-visible": true,
+                                "nullable": true
+                              },
+                              "max_rows": {
+                                "type": "integer",
+                                "title": "Max Rows",
+                                "description": "明细区题目：最多几行",
+                                "x-visible": true,
+                                "nullable": true
+                              },
+                              "depends_on": {
+                                "type": "array",
+                                "maxItems": 2,
+                                "minItems": 2,
+                                "items": {
+                                  "anyOf": [
+                                    {
+                                      "type": "string"
+                                    },
+                                    {
+                                      "items": {
+                                        "type": "string"
+                                      },
+                                      "type": "array"
+                                    }
+                                  ]
+                                },
+                                "title": "Depends On",
+                                "description": "声明类字段依赖，值为 null 或长度为 2 的数组：[依赖字段名, [触发值…]]。第 1 项固定为字符串，第 2 项固定为字符串数组；OpenAPI 3.0 仅声明元素类型集合，位置约束由后端 DTO 保证。",
+                                "x-visible": true,
+                                "nullable": true
+                              }
+                            },
+                            "additionalProperties": false,
+                            "type": "object",
+                            "required": [
+                              "name",
+                              "label",
+                              "kind"
+                            ],
+                            "title": "Question",
+                            "description": "问卷里的一道题（未填 / 不完整）。",
+                            "x-visible": true
+                          },
+                          "type": "array",
+                          "title": "Questions",
+                          "x-visible": true
+                        },
+                        "contract": {
+                          "properties": {
+                            "contract_version": {
+                              "type": "string",
+                              "title": "Contract Version",
+                              "x-visible": true
+                            },
+                            "main_fields": {
+                              "items": {
+                                "properties": {
+                                  "name": {
+                                    "type": "string",
+                                    "title": "Name",
+                                    "x-visible": true
+                                  },
+                                  "label": {
+                                    "type": "string",
+                                    "title": "Label",
+                                    "default": "",
+                                    "x-visible": true
+                                  },
+                                  "kind": {
+                                    "type": "string",
+                                    "title": "Kind",
+                                    "x-visible": true
+                                  },
+                                  "required": {
+                                    "type": "boolean",
+                                    "title": "Required",
+                                    "default": false,
+                                    "x-visible": true
+                                  },
+                                  "group": {
+                                    "type": "string",
+                                    "title": "Group",
+                                    "default": "",
+                                    "x-visible": true
+                                  },
+                                  "options": {
+                                    "title": "Options",
+                                    "x-visible": true,
+                                    "anyOf": [
+                                      {
+                                        "items": {
+                                          "type": "string"
+                                        },
+                                        "type": "array",
+                                        "nullable": true
+                                      },
+                                      {
+                                        "type": "string"
+                                      }
+                                    ]
+                                  },
+                                  "hint": {
+                                    "type": "string",
+                                    "title": "Hint",
+                                    "default": "",
+                                    "x-visible": true
+                                  },
+                                  "depends_on": {
+                                    "type": "array",
+                                    "maxItems": 2,
+                                    "minItems": 2,
+                                    "items": {
+                                      "anyOf": [
+                                        {
+                                          "type": "string"
+                                        },
+                                        {
+                                          "items": {
+                                            "type": "string"
+                                          },
+                                          "type": "array"
+                                        }
+                                      ]
+                                    },
+                                    "title": "Depends On",
+                                    "x-visible": true,
+                                    "nullable": true,
+                                    "description": "声明类字段依赖，值为 null 或长度为 2 的数组：[依赖字段名, [触发值…]]。第 1 项固定为字符串，第 2 项固定为字符串数组；OpenAPI 3.0 仅声明元素类型集合，位置约束由后端 DTO 保证。"
+                                  }
+                                },
+                                "additionalProperties": false,
+                                "type": "object",
+                                "required": [
+                                  "name",
+                                  "kind"
+                                ],
+                                "title": "FieldDefinition",
+                                "x-visible": true
+                              },
+                              "type": "array",
+                              "title": "Main Fields",
+                              "x-visible": true
+                            },
+                            "details": {
+                              "items": {
+                                "properties": {
+                                  "key": {
+                                    "type": "string",
+                                    "title": "Key",
+                                    "x-visible": true
+                                  },
+                                  "label": {
+                                    "type": "string",
+                                    "title": "Label",
+                                    "x-visible": true
+                                  },
+                                  "max": {
+                                    "type": "integer",
+                                    "title": "Max",
+                                    "x-visible": true
+                                  },
+                                  "fields": {
+                                    "items": {
+                                      "properties": {
+                                        "name": {
+                                          "type": "string",
+                                          "title": "Name",
+                                          "x-visible": true
+                                        },
+                                        "label": {
+                                          "type": "string",
+                                          "title": "Label",
+                                          "default": "",
+                                          "x-visible": true
+                                        },
+                                        "kind": {
+                                          "type": "string",
+                                          "title": "Kind",
+                                          "x-visible": true
+                                        },
+                                        "required": {
+                                          "type": "boolean",
+                                          "title": "Required",
+                                          "default": false,
+                                          "x-visible": true
+                                        },
+                                        "group": {
+                                          "type": "string",
+                                          "title": "Group",
+                                          "default": "",
+                                          "x-visible": true
+                                        },
+                                        "options": {
+                                          "title": "Options",
+                                          "x-visible": true,
+                                          "anyOf": [
+                                            {
+                                              "items": {
+                                                "type": "string"
+                                              },
+                                              "type": "array",
+                                              "nullable": true
+                                            },
+                                            {
+                                              "type": "string"
+                                            }
+                                          ]
+                                        },
+                                        "hint": {
+                                          "type": "string",
+                                          "title": "Hint",
+                                          "default": "",
+                                          "x-visible": true
+                                        },
+                                        "depends_on": {
+                                          "type": "array",
+                                          "maxItems": 2,
+                                          "minItems": 2,
+                                          "items": {
+                                            "anyOf": [
+                                              {
+                                                "type": "string"
+                                              },
+                                              {
+                                                "items": {
+                                                  "type": "string"
+                                                },
+                                                "type": "array"
+                                              }
+                                            ]
+                                          },
+                                          "title": "Depends On",
+                                          "x-visible": true,
+                                          "nullable": true,
+                                          "description": "声明类字段依赖，值为 null 或长度为 2 的数组：[依赖字段名, [触发值…]]。第 1 项固定为字符串，第 2 项固定为字符串数组；OpenAPI 3.0 仅声明元素类型集合，位置约束由后端 DTO 保证。"
+                                        }
+                                      },
+                                      "additionalProperties": false,
+                                      "type": "object",
+                                      "required": [
+                                        "name",
+                                        "kind"
+                                      ],
+                                      "title": "FieldDefinition",
+                                      "x-visible": true
+                                    },
+                                    "type": "array",
+                                    "title": "Fields",
+                                    "x-visible": true
+                                  }
+                                },
+                                "additionalProperties": false,
+                                "type": "object",
+                                "required": [
+                                  "key",
+                                  "label",
+                                  "max",
+                                  "fields"
+                                ],
+                                "title": "DetailDefinition",
+                                "x-visible": true
+                              },
+                              "type": "array",
+                              "title": "Details",
+                              "x-visible": true
+                            },
+                            "required_main_fields": {
+                              "items": {
+                                "type": "string"
+                              },
+                              "type": "array",
+                              "title": "Required Main Fields",
+                              "x-visible": true
+                            },
+                            "optional_main_fields": {
+                              "items": {
+                                "type": "string"
+                              },
+                              "type": "array",
+                              "title": "Optional Main Fields",
+                              "x-visible": true
+                            },
+                            "never_from_resume": {
+                              "items": {
+                                "type": "string"
+                              },
+                              "type": "array",
+                              "title": "Never From Resume",
+                              "x-visible": true
+                            },
+                            "counts": {
+                              "properties": {
+                                "main_total": {
+                                  "type": "integer",
+                                  "title": "Main Total",
+                                  "x-visible": true
+                                },
+                                "main_required": {
+                                  "type": "integer",
+                                  "title": "Main Required",
+                                  "x-visible": true
+                                },
+                                "detail_sections": {
+                                  "type": "integer",
+                                  "title": "Detail Sections",
+                                  "x-visible": true
+                                },
+                                "detail_rows_total": {
+                                  "type": "integer",
+                                  "title": "Detail Rows Total",
+                                  "x-visible": true
+                                }
+                              },
+                              "additionalProperties": false,
+                              "type": "object",
+                              "required": [
+                                "main_total",
+                                "main_required",
+                                "detail_sections",
+                                "detail_rows_total"
+                              ],
+                              "title": "ContractCounts",
+                              "x-visible": true
+                            }
+                          },
+                          "additionalProperties": false,
+                          "type": "object",
+                          "required": [
+                            "contract_version",
+                            "main_fields",
+                            "details",
+                            "required_main_fields",
+                            "optional_main_fields",
+                            "never_from_resume",
+                            "counts"
+                          ],
+                          "title": "FieldContract",
+                          "x-visible": true
+                        },
+                        "recognized": {
+                          "additionalProperties": {
+                            "anyOf": [
+                              {
+                                "type": "string",
+                                "nullable": true
+                              },
+                              {
+                                "type": "integer"
+                              },
+                              {
+                                "type": "number"
+                              }
+                            ]
+                          },
+                          "type": "object",
+                          "title": "Recognized",
+                          "x-visible": true
+                        },
+                        "missing_fields": {
+                          "items": {
+                            "type": "string"
+                          },
+                          "type": "array",
+                          "title": "Missing Fields",
+                          "x-visible": true
+                        },
+                        "required_missing": {
+                          "items": {
+                            "type": "string"
+                          },
+                          "type": "array",
+                          "title": "Required Missing",
+                          "x-visible": true
+                        },
+                        "incomplete_fields": {
+                          "additionalProperties": {
+                            "type": "string"
+                          },
+                          "type": "object",
+                          "title": "Incomplete Fields",
+                          "x-visible": true
+                        },
+                        "progress": {
+                          "properties": {
+                            "total_fields": {
+                              "type": "integer",
+                              "title": "Total Fields",
+                              "x-visible": true
+                            },
+                            "filled_fields": {
+                              "type": "integer",
+                              "title": "Filled Fields",
+                              "x-visible": true
+                            },
+                            "missing_fields": {
+                              "type": "integer",
+                              "title": "Missing Fields",
+                              "x-visible": true
+                            },
+                            "required_total": {
+                              "type": "integer",
+                              "title": "Required Total",
+                              "x-visible": true
+                            },
+                            "required_filled": {
+                              "type": "integer",
+                              "title": "Required Filled",
+                              "x-visible": true
+                            },
+                            "completion_rate": {
+                              "type": "number",
+                              "title": "Completion Rate",
+                              "x-visible": true
+                            }
+                          },
+                          "additionalProperties": false,
+                          "type": "object",
+                          "required": [
+                            "total_fields",
+                            "filled_fields",
+                            "missing_fields",
+                            "required_total",
+                            "required_filled",
+                            "completion_rate"
+                          ],
+                          "title": "Progress",
+                          "x-visible": true
+                        },
+                        "fill_url": {
+                          "type": "string",
+                          "title": "Fill Url",
+                          "x-visible": true
+                        },
+                        "expires_at": {
+                          "type": "string",
+                          "title": "Expires At",
+                          "x-visible": true,
+                          "nullable": true
+                        },
+                        "allow_resubmit": {
+                          "type": "boolean",
+                          "title": "Allow Resubmit",
+                          "x-visible": true
+                        },
+                        "question_count": {
+                          "type": "integer",
+                          "title": "Question Count",
+                          "readOnly": true,
+                          "x-visible": true
+                        },
+                        "missing_count": {
+                          "type": "integer",
+                          "title": "Missing Count",
+                          "readOnly": true,
+                          "x-visible": true
+                        },
+                        "incomplete_count": {
+                          "type": "integer",
+                          "title": "Incomplete Count",
+                          "readOnly": true,
+                          "x-visible": true
+                        }
+                      },
+                      "additionalProperties": false,
+                      "type": "object",
+                      "required": [
+                        "app_id",
+                        "name",
+                        "status",
+                        "questions",
+                        "contract",
+                        "recognized",
+                        "missing_fields",
+                        "required_missing",
+                        "incomplete_fields",
+                        "progress",
+                        "fill_url",
+                        "expires_at",
+                        "allow_resubmit",
+                        "question_count",
+                        "missing_count",
+                        "incomplete_count"
+                      ],
+                      "title": "QuestionnaireResponse",
+                      "x-visible": true
+                    }
+                  },
+                  "additionalProperties": false,
+                  "type": "object",
+                  "required": [
+                    "data"
+                  ],
+                  "title": "Envelope[QuestionnaireResponse]",
+                  "x-visible": true
+                }
+              }
+            }
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "ok": {
+                      "type": "boolean",
+                      "title": "Ok",
+                      "default": false,
+                      "x-visible": true,
+                      "enum": [
+                        false
+                      ]
+                    },
+                    "error": {
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "title": "Code",
+                          "x-visible": true
+                        },
+                        "message": {
+                          "type": "string",
+                          "title": "Message",
+                          "x-visible": true
+                        },
+                        "details": {
+                          "items": {
+                            "properties": {
+                              "field": {
+                                "type": "string",
+                                "title": "Field",
+                                "default": "",
+                                "x-visible": true
+                              },
+                              "message": {
+                                "type": "string",
+                                "title": "Message",
+                                "x-visible": true
+                              }
+                            },
+                            "additionalProperties": false,
+                            "type": "object",
+                            "required": [
+                              "message"
+                            ],
+                            "title": "ErrorDetail",
+                            "x-visible": true
+                          },
+                          "type": "array",
+                          "title": "Details",
+                          "x-visible": true
+                        }
+                      },
+                      "additionalProperties": false,
+                      "type": "object",
+                      "required": [
+                        "code",
+                        "message"
+                      ],
+                      "title": "ErrorBody",
+                      "x-visible": true
+                    }
+                  },
+                  "additionalProperties": false,
+                  "type": "object",
+                  "required": [
+                    "error"
+                  ],
+                  "title": "ErrorEnvelope",
+                  "x-visible": true
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "ok": {
+                      "type": "boolean",
+                      "title": "Ok",
+                      "default": false,
+                      "x-visible": true,
+                      "enum": [
+                        false
+                      ]
+                    },
+                    "error": {
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "title": "Code",
+                          "x-visible": true
+                        },
+                        "message": {
+                          "type": "string",
+                          "title": "Message",
+                          "x-visible": true
+                        },
+                        "details": {
+                          "items": {
+                            "properties": {
+                              "field": {
+                                "type": "string",
+                                "title": "Field",
+                                "default": "",
+                                "x-visible": true
+                              },
+                              "message": {
+                                "type": "string",
+                                "title": "Message",
+                                "x-visible": true
+                              }
+                            },
+                            "additionalProperties": false,
+                            "type": "object",
+                            "required": [
+                              "message"
+                            ],
+                            "title": "ErrorDetail",
+                            "x-visible": true
+                          },
+                          "type": "array",
+                          "title": "Details",
+                          "x-visible": true
+                        }
+                      },
+                      "additionalProperties": false,
+                      "type": "object",
+                      "required": [
+                        "code",
+                        "message"
+                      ],
+                      "title": "ErrorBody",
+                      "x-visible": true
+                    }
+                  },
+                  "additionalProperties": false,
+                  "type": "object",
+                  "required": [
+                    "error"
+                  ],
+                  "title": "ErrorEnvelope",
+                  "x-visible": true
+                }
+              }
+            },
+            "description": "接口密钥缺失或不正确，请检查平台 X-API-Key 鉴权配置。"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "ok": {
+                      "type": "boolean",
+                      "title": "Ok",
+                      "default": false,
+                      "x-visible": true,
+                      "enum": [
+                        false
+                      ]
+                    },
+                    "error": {
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "title": "Code",
+                          "x-visible": true
+                        },
+                        "message": {
+                          "type": "string",
+                          "title": "Message",
+                          "x-visible": true
+                        },
+                        "details": {
+                          "items": {
+                            "properties": {
+                              "field": {
+                                "type": "string",
+                                "title": "Field",
+                                "default": "",
+                                "x-visible": true
+                              },
+                              "message": {
+                                "type": "string",
+                                "title": "Message",
+                                "x-visible": true
+                              }
+                            },
+                            "additionalProperties": false,
+                            "type": "object",
+                            "required": [
+                              "message"
+                            ],
+                            "title": "ErrorDetail",
+                            "x-visible": true
+                          },
+                          "type": "array",
+                          "title": "Details",
+                          "x-visible": true
+                        }
+                      },
+                      "additionalProperties": false,
+                      "type": "object",
+                      "required": [
+                        "code",
+                        "message"
+                      ],
+                      "title": "ErrorBody",
+                      "x-visible": true
+                    }
+                  },
+                  "additionalProperties": false,
+                  "type": "object",
+                  "required": [
+                    "error"
+                  ],
+                  "title": "ErrorEnvelope",
+                  "x-visible": true
+                }
+              }
+            },
+            "description": "申请编号不存在。"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "ok": {
+                      "type": "boolean",
+                      "title": "Ok",
+                      "default": false,
+                      "x-visible": true,
+                      "enum": [
+                        false
+                      ]
+                    },
+                    "error": {
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "title": "Code",
+                          "x-visible": true
+                        },
+                        "message": {
+                          "type": "string",
+                          "title": "Message",
+                          "x-visible": true
+                        },
+                        "details": {
+                          "items": {
+                            "properties": {
+                              "field": {
+                                "type": "string",
+                                "title": "Field",
+                                "default": "",
+                                "x-visible": true
+                              },
+                              "message": {
+                                "type": "string",
+                                "title": "Message",
+                                "x-visible": true
+                              }
+                            },
+                            "additionalProperties": false,
+                            "type": "object",
+                            "required": [
+                              "message"
+                            ],
+                            "title": "ErrorDetail",
+                            "x-visible": true
+                          },
+                          "type": "array",
+                          "title": "Details",
+                          "x-visible": true
+                        }
+                      },
+                      "additionalProperties": false,
+                      "type": "object",
+                      "required": [
+                        "code",
+                        "message"
+                      ],
+                      "title": "ErrorBody",
+                      "x-visible": true
+                    }
+                  },
+                  "additionalProperties": false,
+                  "type": "object",
+                  "required": [
+                    "error"
+                  ],
+                  "title": "ErrorEnvelope",
+                  "x-visible": true
+                }
+              }
+            },
+            "description": "申请作废、重复提交限制、提交 ID 冲突或并发更新冲突。"
+          },
+          "410": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "ok": {
+                      "type": "boolean",
+                      "title": "Ok",
+                      "default": false,
+                      "x-visible": true,
+                      "enum": [
+                        false
+                      ]
+                    },
+                    "error": {
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "title": "Code",
+                          "x-visible": true
+                        },
+                        "message": {
+                          "type": "string",
+                          "title": "Message",
+                          "x-visible": true
+                        },
+                        "details": {
+                          "items": {
+                            "properties": {
+                              "field": {
+                                "type": "string",
+                                "title": "Field",
+                                "default": "",
+                                "x-visible": true
+                              },
+                              "message": {
+                                "type": "string",
+                                "title": "Message",
+                                "x-visible": true
+                              }
+                            },
+                            "additionalProperties": false,
+                            "type": "object",
+                            "required": [
+                              "message"
+                            ],
+                            "title": "ErrorDetail",
+                            "x-visible": true
+                          },
+                          "type": "array",
+                          "title": "Details",
+                          "x-visible": true
+                        }
+                      },
+                      "additionalProperties": false,
+                      "type": "object",
+                      "required": [
+                        "code",
+                        "message"
+                      ],
+                      "title": "ErrorBody",
+                      "x-visible": true
+                    }
+                  },
+                  "additionalProperties": false,
+                  "type": "object",
+                  "required": [
+                    "error"
+                  ],
+                  "title": "ErrorEnvelope",
+                  "x-visible": true
+                }
+              }
+            },
+            "description": "Gone"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "ok": {
+                      "type": "boolean",
+                      "title": "Ok",
+                      "default": false,
+                      "x-visible": true,
+                      "enum": [
+                        false
+                      ]
+                    },
+                    "error": {
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "title": "Code",
+                          "x-visible": true
+                        },
+                        "message": {
+                          "type": "string",
+                          "title": "Message",
+                          "x-visible": true
+                        },
+                        "details": {
+                          "items": {
+                            "properties": {
+                              "field": {
+                                "type": "string",
+                                "title": "Field",
+                                "default": "",
+                                "x-visible": true
+                              },
+                              "message": {
+                                "type": "string",
+                                "title": "Message",
+                                "x-visible": true
+                              }
+                            },
+                            "additionalProperties": false,
+                            "type": "object",
+                            "required": [
+                              "message"
+                            ],
+                            "title": "ErrorDetail",
+                            "x-visible": true
+                          },
+                          "type": "array",
+                          "title": "Details",
+                          "x-visible": true
+                        }
+                      },
+                      "additionalProperties": false,
+                      "type": "object",
+                      "required": [
+                        "code",
+                        "message"
+                      ],
+                      "title": "ErrorBody",
+                      "x-visible": true
+                    }
+                  },
+                  "additionalProperties": false,
+                  "type": "object",
+                  "required": [
+                    "error"
+                  ],
+                  "title": "ErrorEnvelope",
+                  "x-visible": true
+                }
+              }
+            },
+            "description": "请求字段、字段类型或业务取值不合法；error.details 提供校验说明。"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "ok": {
+                      "type": "boolean",
+                      "title": "Ok",
+                      "default": false,
+                      "x-visible": true,
+                      "enum": [
+                        false
+                      ]
+                    },
+                    "error": {
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "title": "Code",
+                          "x-visible": true
+                        },
+                        "message": {
+                          "type": "string",
+                          "title": "Message",
+                          "x-visible": true
+                        },
+                        "details": {
+                          "items": {
+                            "properties": {
+                              "field": {
+                                "type": "string",
+                                "title": "Field",
+                                "default": "",
+                                "x-visible": true
+                              },
+                              "message": {
+                                "type": "string",
+                                "title": "Message",
+                                "x-visible": true
+                              }
+                            },
+                            "additionalProperties": false,
+                            "type": "object",
+                            "required": [
+                              "message"
+                            ],
+                            "title": "ErrorDetail",
+                            "x-visible": true
+                          },
+                          "type": "array",
+                          "title": "Details",
+                          "x-visible": true
+                        }
+                      },
+                      "additionalProperties": false,
+                      "type": "object",
+                      "required": [
+                        "code",
+                        "message"
+                      ],
+                      "title": "ErrorBody",
+                      "x-visible": true
+                    }
+                  },
+                  "additionalProperties": false,
+                  "type": "object",
+                  "required": [
+                    "error"
+                  ],
+                  "title": "ErrorEnvelope",
+                  "x-visible": true
+                }
+              }
+            },
+            "description": "Internal Server Error"
+          }
+        },
+        "description": "使用 write_initial_fields 返回的 app_id，生成并返回需要候选人补充的问卷。无请求体。结果包含 questions、contract、recognized、fill_url、expires_at、progress；请把 data.fill_url 原样交给候选人填写。有效链接会复用，缺失或过期时重新签发。生成接口不会等待候选人提交；候选人通过页面完成后，调用 get_all_fields 查询最新结果。这里同时返回完整字段契约，不再调用 /fields。"
+      }
+    },
+    "/api/v1/questionnaires/{app_id}/answers": {
+      "post": {
+        "tags": [
+          "Questionnaire_Service"
+        ],
+        "summary": "3. 接收候选人返回字段",
+        "operationId": "submit_fields",
+        "parameters": [
+          {
+            "name": "app_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "App Id",
+              "description": "申请编号，使用 write_initial_fields 返回的 data.app_id，或已有申请编号。",
+              "x-visible": true
+            },
+            "description": "申请编号，使用 write_initial_fields 返回的 data.app_id，或已有申请编号。"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "properties": {
+                  "submission_id": {
+                    "type": "string",
+                    "maxLength": 64,
+                    "minLength": 1,
+                    "pattern": "^[A-Za-z0-9_-]+$",
+                    "title": "Submission Id",
+                    "x-visible": true,
+                    "description": "可省略；为网络重试提供稳定且全局唯一的 ID。1～64 位，只允许英文字母、数字、下划线、连字符。",
+                    "nullable": true
+                  },
+                  "main": {
+                    "additionalProperties": {
+                      "anyOf": [
+                        {
+                          "type": "string",
+                          "nullable": true
+                        },
+                        {
+                          "type": "integer"
+                        },
+                        {
+                          "type": "number"
+                        }
+                      ]
+                    },
+                    "type": "object",
+                    "title": "Main",
+                    "x-visible": true,
+                    "description": "中文主表字段名到值的映射，字段值只允许字符串、数字或 null；不要嵌套对象。常用字段：姓名、应聘职位、性别、出生日期、毕业院校、毕业时间、最高学历、专业、身份证号、手机号码、婚姻状况、健康状况、紧急联系人姓名、紧急联系人关系、紧急联系人电话。其余字段和枚举以 generate_questionnaire 返回的 data.contract 为准。日期使用 YYYY-MM-DD。"
+                  },
+                  "details": {
+                    "additionalProperties": {
+                      "items": {
+                        "additionalProperties": {
+                          "anyOf": [
+                            {
+                              "type": "string",
+                              "nullable": true
+                            },
+                            {
+                              "type": "integer"
+                            },
+                            {
+                              "type": "number"
+                            }
+                          ]
+                        },
+                        "type": "object"
+                      },
+                      "type": "array"
+                    },
+                    "type": "object",
+                    "title": "Details",
+                    "x-visible": true,
+                    "description": "明细区名称到行数组的映射：家庭成员明细（默认最多5行）、学历培训明细（最多2行）、资历专业资格明细（最多2行）、工作经验明细（最多4行）。每行以契约中文字段名为键，值为字符串、数字或 null。实际字段与行数上限以问卷 contract 为准。"
+                  },
+                  "confirmed": {
+                    "type": "boolean",
+                    "title": "Confirmed",
+                    "default": false,
+                    "x-visible": true,
+                    "description": "候选人是否已明确核对无误；不能代替候选人推断确认。默认 false。"
+                  }
+                },
+                "additionalProperties": false,
+                "type": "object",
+                "title": "SubmitFieldsRequest",
+                "x-visible": true
+              },
+              "example": {
+                "submission_id": "SUB-example-001",
+                "main": {
+                  "应聘职位": "软件开发"
+                },
+                "details": {},
+                "confirmed": false
+              }
+            }
+          },
+          "description": "仅提交候选人实际返回的主表和明细字段。"
+        },
+        "responses": {
+          "200": {
+            "description": "操作成功，data 为本接口声明的 DTO。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "ok": {
+                      "type": "boolean",
+                      "title": "Ok",
+                      "default": true,
+                      "x-visible": true,
+                      "enum": [
+                        true
+                      ]
+                    },
+                    "data": {
+                      "properties": {
+                        "app_id": {
+                          "type": "string",
+                          "title": "App Id",
+                          "x-visible": true
+                        },
+                        "name": {
+                          "type": "string",
+                          "title": "Name",
+                          "x-visible": true
+                        },
+                        "status": {
+                          "type": "string",
+                          "enum": [
+                            "pending",
+                            "submitted",
+                            "completed",
+                            "void"
+                          ],
+                          "title": "Status",
+                          "x-visible": true
+                        },
+                        "version": {
+                          "type": "integer",
+                          "title": "Version",
+                          "x-visible": true
+                        },
+                        "main": {
+                          "additionalProperties": {
+                            "anyOf": [
+                              {
+                                "type": "string",
+                                "nullable": true
+                              },
+                              {
+                                "type": "integer"
+                              },
+                              {
+                                "type": "number"
+                              }
+                            ]
+                          },
+                          "type": "object",
+                          "title": "Main",
+                          "x-visible": true
+                        },
+                        "details": {
+                          "additionalProperties": {
+                            "items": {
+                              "additionalProperties": {
+                                "anyOf": [
+                                  {
+                                    "type": "string",
+                                    "nullable": true
+                                  },
+                                  {
+                                    "type": "integer"
+                                  },
+                                  {
+                                    "type": "number"
+                                  }
+                                ]
+                              },
+                              "type": "object"
+                            },
+                            "type": "array"
+                          },
+                          "type": "object",
+                          "title": "Details",
+                          "x-visible": true
+                        },
+                        "missing_fields": {
+                          "items": {
+                            "type": "string"
+                          },
+                          "type": "array",
+                          "title": "Missing Fields",
+                          "x-visible": true
+                        },
+                        "incomplete_fields": {
+                          "additionalProperties": {
+                            "type": "string"
+                          },
+                          "type": "object",
+                          "title": "Incomplete Fields",
+                          "x-visible": true
+                        },
+                        "progress": {
+                          "properties": {
+                            "total_fields": {
+                              "type": "integer",
+                              "title": "Total Fields",
+                              "x-visible": true
+                            },
+                            "filled_fields": {
+                              "type": "integer",
+                              "title": "Filled Fields",
+                              "x-visible": true
+                            },
+                            "missing_fields": {
+                              "type": "integer",
+                              "title": "Missing Fields",
+                              "x-visible": true
+                            },
+                            "required_total": {
+                              "type": "integer",
+                              "title": "Required Total",
+                              "x-visible": true
+                            },
+                            "required_filled": {
+                              "type": "integer",
+                              "title": "Required Filled",
+                              "x-visible": true
+                            },
+                            "completion_rate": {
+                              "type": "number",
+                              "title": "Completion Rate",
+                              "x-visible": true
+                            }
+                          },
+                          "additionalProperties": false,
+                          "type": "object",
+                          "required": [
+                            "total_fields",
+                            "filled_fields",
+                            "missing_fields",
+                            "required_total",
+                            "required_filled",
+                            "completion_rate"
+                          ],
+                          "title": "Progress",
+                          "x-visible": true
+                        },
+                        "created_at": {
+                          "type": "string",
+                          "title": "Created At",
+                          "x-visible": true,
+                          "nullable": true
+                        },
+                        "updated_at": {
+                          "type": "string",
+                          "title": "Updated At",
+                          "x-visible": true,
+                          "nullable": true
+                        },
+                        "submitted_at": {
+                          "type": "string",
+                          "title": "Submitted At",
+                          "x-visible": true,
+                          "nullable": true
+                        },
+                        "submission_id": {
+                          "type": "string",
+                          "title": "Submission Id",
+                          "x-visible": true
+                        },
+                        "sequence": {
+                          "type": "integer",
+                          "title": "Sequence",
+                          "x-visible": true
+                        },
+                        "changed_fields": {
+                          "items": {
+                            "properties": {
+                              "field": {
+                                "type": "string",
+                                "title": "Field",
+                                "x-visible": true
+                              },
+                              "original": {
+                                "type": "string",
+                                "title": "Original",
+                                "x-visible": true
+                              },
+                              "updated": {
+                                "type": "string",
+                                "title": "Updated",
+                                "x-visible": true
+                              }
+                            },
+                            "additionalProperties": false,
+                            "type": "object",
+                            "required": [
+                              "field",
+                              "original",
+                              "updated"
+                            ],
+                            "title": "FieldChange",
+                            "x-visible": true
+                          },
+                          "type": "array",
+                          "title": "Changed Fields",
+                          "x-visible": true
+                        },
+                        "missing_count": {
+                          "type": "integer",
+                          "title": "Missing Count",
+                          "readOnly": true,
+                          "x-visible": true
+                        },
+                        "incomplete_count": {
+                          "type": "integer",
+                          "title": "Incomplete Count",
+                          "readOnly": true,
+                          "x-visible": true
+                        },
+                        "changed_count": {
+                          "type": "integer",
+                          "title": "Changed Count",
+                          "readOnly": true,
+                          "x-visible": true
+                        }
+                      },
+                      "additionalProperties": false,
+                      "type": "object",
+                      "required": [
+                        "app_id",
+                        "name",
+                        "status",
+                        "version",
+                        "main",
+                        "details",
+                        "missing_fields",
+                        "incomplete_fields",
+                        "progress",
+                        "created_at",
+                        "updated_at",
+                        "submitted_at",
+                        "submission_id",
+                        "sequence",
+                        "changed_fields",
+                        "missing_count",
+                        "incomplete_count",
+                        "changed_count"
+                      ],
+                      "title": "SubmitFieldsResponse",
+                      "x-visible": true
+                    }
+                  },
+                  "additionalProperties": false,
+                  "type": "object",
+                  "required": [
+                    "data"
+                  ],
+                  "title": "Envelope[SubmitFieldsResponse]",
+                  "x-visible": true
+                }
+              }
+            }
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "ok": {
+                      "type": "boolean",
+                      "title": "Ok",
+                      "default": false,
+                      "x-visible": true,
+                      "enum": [
+                        false
+                      ]
+                    },
+                    "error": {
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "title": "Code",
+                          "x-visible": true
+                        },
+                        "message": {
+                          "type": "string",
+                          "title": "Message",
+                          "x-visible": true
+                        },
+                        "details": {
+                          "items": {
+                            "properties": {
+                              "field": {
+                                "type": "string",
+                                "title": "Field",
+                                "default": "",
+                                "x-visible": true
+                              },
+                              "message": {
+                                "type": "string",
+                                "title": "Message",
+                                "x-visible": true
+                              }
+                            },
+                            "additionalProperties": false,
+                            "type": "object",
+                            "required": [
+                              "message"
+                            ],
+                            "title": "ErrorDetail",
+                            "x-visible": true
+                          },
+                          "type": "array",
+                          "title": "Details",
+                          "x-visible": true
+                        }
+                      },
+                      "additionalProperties": false,
+                      "type": "object",
+                      "required": [
+                        "code",
+                        "message"
+                      ],
+                      "title": "ErrorBody",
+                      "x-visible": true
+                    }
+                  },
+                  "additionalProperties": false,
+                  "type": "object",
+                  "required": [
+                    "error"
+                  ],
+                  "title": "ErrorEnvelope",
+                  "x-visible": true
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "ok": {
+                      "type": "boolean",
+                      "title": "Ok",
+                      "default": false,
+                      "x-visible": true,
+                      "enum": [
+                        false
+                      ]
+                    },
+                    "error": {
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "title": "Code",
+                          "x-visible": true
+                        },
+                        "message": {
+                          "type": "string",
+                          "title": "Message",
+                          "x-visible": true
+                        },
+                        "details": {
+                          "items": {
+                            "properties": {
+                              "field": {
+                                "type": "string",
+                                "title": "Field",
+                                "default": "",
+                                "x-visible": true
+                              },
+                              "message": {
+                                "type": "string",
+                                "title": "Message",
+                                "x-visible": true
+                              }
+                            },
+                            "additionalProperties": false,
+                            "type": "object",
+                            "required": [
+                              "message"
+                            ],
+                            "title": "ErrorDetail",
+                            "x-visible": true
+                          },
+                          "type": "array",
+                          "title": "Details",
+                          "x-visible": true
+                        }
+                      },
+                      "additionalProperties": false,
+                      "type": "object",
+                      "required": [
+                        "code",
+                        "message"
+                      ],
+                      "title": "ErrorBody",
+                      "x-visible": true
+                    }
+                  },
+                  "additionalProperties": false,
+                  "type": "object",
+                  "required": [
+                    "error"
+                  ],
+                  "title": "ErrorEnvelope",
+                  "x-visible": true
+                }
+              }
+            },
+            "description": "接口密钥缺失或不正确，请检查平台 X-API-Key 鉴权配置。"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "ok": {
+                      "type": "boolean",
+                      "title": "Ok",
+                      "default": false,
+                      "x-visible": true,
+                      "enum": [
+                        false
+                      ]
+                    },
+                    "error": {
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "title": "Code",
+                          "x-visible": true
+                        },
+                        "message": {
+                          "type": "string",
+                          "title": "Message",
+                          "x-visible": true
+                        },
+                        "details": {
+                          "items": {
+                            "properties": {
+                              "field": {
+                                "type": "string",
+                                "title": "Field",
+                                "default": "",
+                                "x-visible": true
+                              },
+                              "message": {
+                                "type": "string",
+                                "title": "Message",
+                                "x-visible": true
+                              }
+                            },
+                            "additionalProperties": false,
+                            "type": "object",
+                            "required": [
+                              "message"
+                            ],
+                            "title": "ErrorDetail",
+                            "x-visible": true
+                          },
+                          "type": "array",
+                          "title": "Details",
+                          "x-visible": true
+                        }
+                      },
+                      "additionalProperties": false,
+                      "type": "object",
+                      "required": [
+                        "code",
+                        "message"
+                      ],
+                      "title": "ErrorBody",
+                      "x-visible": true
+                    }
+                  },
+                  "additionalProperties": false,
+                  "type": "object",
+                  "required": [
+                    "error"
+                  ],
+                  "title": "ErrorEnvelope",
+                  "x-visible": true
+                }
+              }
+            },
+            "description": "申请编号不存在。"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "ok": {
+                      "type": "boolean",
+                      "title": "Ok",
+                      "default": false,
+                      "x-visible": true,
+                      "enum": [
+                        false
+                      ]
+                    },
+                    "error": {
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "title": "Code",
+                          "x-visible": true
+                        },
+                        "message": {
+                          "type": "string",
+                          "title": "Message",
+                          "x-visible": true
+                        },
+                        "details": {
+                          "items": {
+                            "properties": {
+                              "field": {
+                                "type": "string",
+                                "title": "Field",
+                                "default": "",
+                                "x-visible": true
+                              },
+                              "message": {
+                                "type": "string",
+                                "title": "Message",
+                                "x-visible": true
+                              }
+                            },
+                            "additionalProperties": false,
+                            "type": "object",
+                            "required": [
+                              "message"
+                            ],
+                            "title": "ErrorDetail",
+                            "x-visible": true
+                          },
+                          "type": "array",
+                          "title": "Details",
+                          "x-visible": true
+                        }
+                      },
+                      "additionalProperties": false,
+                      "type": "object",
+                      "required": [
+                        "code",
+                        "message"
+                      ],
+                      "title": "ErrorBody",
+                      "x-visible": true
+                    }
+                  },
+                  "additionalProperties": false,
+                  "type": "object",
+                  "required": [
+                    "error"
+                  ],
+                  "title": "ErrorEnvelope",
+                  "x-visible": true
+                }
+              }
+            },
+            "description": "申请作废、重复提交限制、提交 ID 冲突或并发更新冲突。"
+          },
+          "410": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "ok": {
+                      "type": "boolean",
+                      "title": "Ok",
+                      "default": false,
+                      "x-visible": true,
+                      "enum": [
+                        false
+                      ]
+                    },
+                    "error": {
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "title": "Code",
+                          "x-visible": true
+                        },
+                        "message": {
+                          "type": "string",
+                          "title": "Message",
+                          "x-visible": true
+                        },
+                        "details": {
+                          "items": {
+                            "properties": {
+                              "field": {
+                                "type": "string",
+                                "title": "Field",
+                                "default": "",
+                                "x-visible": true
+                              },
+                              "message": {
+                                "type": "string",
+                                "title": "Message",
+                                "x-visible": true
+                              }
+                            },
+                            "additionalProperties": false,
+                            "type": "object",
+                            "required": [
+                              "message"
+                            ],
+                            "title": "ErrorDetail",
+                            "x-visible": true
+                          },
+                          "type": "array",
+                          "title": "Details",
+                          "x-visible": true
+                        }
+                      },
+                      "additionalProperties": false,
+                      "type": "object",
+                      "required": [
+                        "code",
+                        "message"
+                      ],
+                      "title": "ErrorBody",
+                      "x-visible": true
+                    }
+                  },
+                  "additionalProperties": false,
+                  "type": "object",
+                  "required": [
+                    "error"
+                  ],
+                  "title": "ErrorEnvelope",
+                  "x-visible": true
+                }
+              }
+            },
+            "description": "Gone"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "ok": {
+                      "type": "boolean",
+                      "title": "Ok",
+                      "default": false,
+                      "x-visible": true,
+                      "enum": [
+                        false
+                      ]
+                    },
+                    "error": {
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "title": "Code",
+                          "x-visible": true
+                        },
+                        "message": {
+                          "type": "string",
+                          "title": "Message",
+                          "x-visible": true
+                        },
+                        "details": {
+                          "items": {
+                            "properties": {
+                              "field": {
+                                "type": "string",
+                                "title": "Field",
+                                "default": "",
+                                "x-visible": true
+                              },
+                              "message": {
+                                "type": "string",
+                                "title": "Message",
+                                "x-visible": true
+                              }
+                            },
+                            "additionalProperties": false,
+                            "type": "object",
+                            "required": [
+                              "message"
+                            ],
+                            "title": "ErrorDetail",
+                            "x-visible": true
+                          },
+                          "type": "array",
+                          "title": "Details",
+                          "x-visible": true
+                        }
+                      },
+                      "additionalProperties": false,
+                      "type": "object",
+                      "required": [
+                        "code",
+                        "message"
+                      ],
+                      "title": "ErrorBody",
+                      "x-visible": true
+                    }
+                  },
+                  "additionalProperties": false,
+                  "type": "object",
+                  "required": [
+                    "error"
+                  ],
+                  "title": "ErrorEnvelope",
+                  "x-visible": true
+                }
+              }
+            },
+            "description": "请求字段、字段类型或业务取值不合法；error.details 提供校验说明。"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "ok": {
+                      "type": "boolean",
+                      "title": "Ok",
+                      "default": false,
+                      "x-visible": true,
+                      "enum": [
+                        false
+                      ]
+                    },
+                    "error": {
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "title": "Code",
+                          "x-visible": true
+                        },
+                        "message": {
+                          "type": "string",
+                          "title": "Message",
+                          "x-visible": true
+                        },
+                        "details": {
+                          "items": {
+                            "properties": {
+                              "field": {
+                                "type": "string",
+                                "title": "Field",
+                                "default": "",
+                                "x-visible": true
+                              },
+                              "message": {
+                                "type": "string",
+                                "title": "Message",
+                                "x-visible": true
+                              }
+                            },
+                            "additionalProperties": false,
+                            "type": "object",
+                            "required": [
+                              "message"
+                            ],
+                            "title": "ErrorDetail",
+                            "x-visible": true
+                          },
+                          "type": "array",
+                          "title": "Details",
+                          "x-visible": true
+                        }
+                      },
+                      "additionalProperties": false,
+                      "type": "object",
+                      "required": [
+                        "code",
+                        "message"
+                      ],
+                      "title": "ErrorBody",
+                      "x-visible": true
+                    }
+                  },
+                  "additionalProperties": false,
+                  "type": "object",
+                  "required": [
+                    "error"
+                  ],
+                  "title": "ErrorEnvelope",
+                  "x-visible": true
+                }
+              }
+            },
+            "description": "Internal Server Error"
+          }
+        },
+        "description": "将候选人实际提供的字段合并回指定申请。仅支持 submission_id、main、details、confirmed，不要传 token 或 client_ip。confirmed 仅在候选人明确核对无误后设为 true。主表非空值覆盖旧值，空值保留；某明细区的非空数组替换该区原有行，提交时需携带希望保留的行。网络重试使用相同 submission_id 和相同内容；换申请或换内容必须使用新 ID，否则返回 409。响应 changed_fields 使用 field/original/updated，成功不代表字段已齐全，应检查 missing_fields、incomplete_fields 和 status。"
+      }
+    },
+    "/api/v1/questionnaires/{app_id}": {
+      "get": {
+        "tags": [
+          "Questionnaire_Service"
+        ],
+        "summary": "4. 返回所有字段",
+        "operationId": "get_all_fields",
+        "parameters": [
+          {
+            "name": "app_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "App Id",
+              "description": "申请编号，使用 write_initial_fields 返回的 data.app_id，或已有申请编号。",
+              "x-visible": true
+            },
+            "description": "申请编号，使用 write_initial_fields 返回的 data.app_id，或已有申请编号。"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "操作成功，data 为本接口声明的 DTO。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "ok": {
+                      "type": "boolean",
+                      "title": "Ok",
+                      "default": true,
+                      "x-visible": true,
+                      "enum": [
+                        true
+                      ]
+                    },
+                    "data": {
+                      "properties": {
+                        "app_id": {
+                          "type": "string",
+                          "title": "App Id",
+                          "x-visible": true
+                        },
+                        "name": {
+                          "type": "string",
+                          "title": "Name",
+                          "x-visible": true
+                        },
+                        "status": {
+                          "type": "string",
+                          "enum": [
+                            "pending",
+                            "submitted",
+                            "completed",
+                            "void"
+                          ],
+                          "title": "Status",
+                          "x-visible": true
+                        },
+                        "version": {
+                          "type": "integer",
+                          "title": "Version",
+                          "x-visible": true
+                        },
+                        "main": {
+                          "additionalProperties": {
+                            "anyOf": [
+                              {
+                                "type": "string",
+                                "nullable": true
+                              },
+                              {
+                                "type": "integer"
+                              },
+                              {
+                                "type": "number"
+                              }
+                            ]
+                          },
+                          "type": "object",
+                          "title": "Main",
+                          "x-visible": true
+                        },
+                        "details": {
+                          "additionalProperties": {
+                            "items": {
+                              "additionalProperties": {
+                                "anyOf": [
+                                  {
+                                    "type": "string",
+                                    "nullable": true
+                                  },
+                                  {
+                                    "type": "integer"
+                                  },
+                                  {
+                                    "type": "number"
+                                  }
+                                ]
+                              },
+                              "type": "object"
+                            },
+                            "type": "array"
+                          },
+                          "type": "object",
+                          "title": "Details",
+                          "x-visible": true
+                        },
+                        "missing_fields": {
+                          "items": {
+                            "type": "string"
+                          },
+                          "type": "array",
+                          "title": "Missing Fields",
+                          "x-visible": true
+                        },
+                        "incomplete_fields": {
+                          "additionalProperties": {
+                            "type": "string"
+                          },
+                          "type": "object",
+                          "title": "Incomplete Fields",
+                          "x-visible": true
+                        },
+                        "progress": {
+                          "properties": {
+                            "total_fields": {
+                              "type": "integer",
+                              "title": "Total Fields",
+                              "x-visible": true
+                            },
+                            "filled_fields": {
+                              "type": "integer",
+                              "title": "Filled Fields",
+                              "x-visible": true
+                            },
+                            "missing_fields": {
+                              "type": "integer",
+                              "title": "Missing Fields",
+                              "x-visible": true
+                            },
+                            "required_total": {
+                              "type": "integer",
+                              "title": "Required Total",
+                              "x-visible": true
+                            },
+                            "required_filled": {
+                              "type": "integer",
+                              "title": "Required Filled",
+                              "x-visible": true
+                            },
+                            "completion_rate": {
+                              "type": "number",
+                              "title": "Completion Rate",
+                              "x-visible": true
+                            }
+                          },
+                          "additionalProperties": false,
+                          "type": "object",
+                          "required": [
+                            "total_fields",
+                            "filled_fields",
+                            "missing_fields",
+                            "required_total",
+                            "required_filled",
+                            "completion_rate"
+                          ],
+                          "title": "Progress",
+                          "x-visible": true
+                        },
+                        "created_at": {
+                          "type": "string",
+                          "title": "Created At",
+                          "x-visible": true,
+                          "nullable": true
+                        },
+                        "updated_at": {
+                          "type": "string",
+                          "title": "Updated At",
+                          "x-visible": true,
+                          "nullable": true
+                        },
+                        "submitted_at": {
+                          "type": "string",
+                          "title": "Submitted At",
+                          "x-visible": true,
+                          "nullable": true
+                        },
+                        "missing_count": {
+                          "type": "integer",
+                          "title": "Missing Count",
+                          "readOnly": true,
+                          "x-visible": true
+                        },
+                        "incomplete_count": {
+                          "type": "integer",
+                          "title": "Incomplete Count",
+                          "readOnly": true,
+                          "x-visible": true
+                        }
+                      },
+                      "additionalProperties": false,
+                      "type": "object",
+                      "required": [
+                        "app_id",
+                        "name",
+                        "status",
+                        "version",
+                        "main",
+                        "details",
+                        "missing_fields",
+                        "incomplete_fields",
+                        "progress",
+                        "created_at",
+                        "updated_at",
+                        "submitted_at",
+                        "missing_count",
+                        "incomplete_count"
+                      ],
+                      "title": "FieldsResponse",
+                      "x-visible": true
+                    }
+                  },
+                  "additionalProperties": false,
+                  "type": "object",
+                  "required": [
+                    "data"
+                  ],
+                  "title": "Envelope[FieldsResponse]",
+                  "x-visible": true
+                }
+              }
+            }
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "ok": {
+                      "type": "boolean",
+                      "title": "Ok",
+                      "default": false,
+                      "x-visible": true,
+                      "enum": [
+                        false
+                      ]
+                    },
+                    "error": {
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "title": "Code",
+                          "x-visible": true
+                        },
+                        "message": {
+                          "type": "string",
+                          "title": "Message",
+                          "x-visible": true
+                        },
+                        "details": {
+                          "items": {
+                            "properties": {
+                              "field": {
+                                "type": "string",
+                                "title": "Field",
+                                "default": "",
+                                "x-visible": true
+                              },
+                              "message": {
+                                "type": "string",
+                                "title": "Message",
+                                "x-visible": true
+                              }
+                            },
+                            "additionalProperties": false,
+                            "type": "object",
+                            "required": [
+                              "message"
+                            ],
+                            "title": "ErrorDetail",
+                            "x-visible": true
+                          },
+                          "type": "array",
+                          "title": "Details",
+                          "x-visible": true
+                        }
+                      },
+                      "additionalProperties": false,
+                      "type": "object",
+                      "required": [
+                        "code",
+                        "message"
+                      ],
+                      "title": "ErrorBody",
+                      "x-visible": true
+                    }
+                  },
+                  "additionalProperties": false,
+                  "type": "object",
+                  "required": [
+                    "error"
+                  ],
+                  "title": "ErrorEnvelope",
+                  "x-visible": true
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "ok": {
+                      "type": "boolean",
+                      "title": "Ok",
+                      "default": false,
+                      "x-visible": true,
+                      "enum": [
+                        false
+                      ]
+                    },
+                    "error": {
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "title": "Code",
+                          "x-visible": true
+                        },
+                        "message": {
+                          "type": "string",
+                          "title": "Message",
+                          "x-visible": true
+                        },
+                        "details": {
+                          "items": {
+                            "properties": {
+                              "field": {
+                                "type": "string",
+                                "title": "Field",
+                                "default": "",
+                                "x-visible": true
+                              },
+                              "message": {
+                                "type": "string",
+                                "title": "Message",
+                                "x-visible": true
+                              }
+                            },
+                            "additionalProperties": false,
+                            "type": "object",
+                            "required": [
+                              "message"
+                            ],
+                            "title": "ErrorDetail",
+                            "x-visible": true
+                          },
+                          "type": "array",
+                          "title": "Details",
+                          "x-visible": true
+                        }
+                      },
+                      "additionalProperties": false,
+                      "type": "object",
+                      "required": [
+                        "code",
+                        "message"
+                      ],
+                      "title": "ErrorBody",
+                      "x-visible": true
+                    }
+                  },
+                  "additionalProperties": false,
+                  "type": "object",
+                  "required": [
+                    "error"
+                  ],
+                  "title": "ErrorEnvelope",
+                  "x-visible": true
+                }
+              }
+            },
+            "description": "接口密钥缺失或不正确，请检查平台 X-API-Key 鉴权配置。"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "ok": {
+                      "type": "boolean",
+                      "title": "Ok",
+                      "default": false,
+                      "x-visible": true,
+                      "enum": [
+                        false
+                      ]
+                    },
+                    "error": {
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "title": "Code",
+                          "x-visible": true
+                        },
+                        "message": {
+                          "type": "string",
+                          "title": "Message",
+                          "x-visible": true
+                        },
+                        "details": {
+                          "items": {
+                            "properties": {
+                              "field": {
+                                "type": "string",
+                                "title": "Field",
+                                "default": "",
+                                "x-visible": true
+                              },
+                              "message": {
+                                "type": "string",
+                                "title": "Message",
+                                "x-visible": true
+                              }
+                            },
+                            "additionalProperties": false,
+                            "type": "object",
+                            "required": [
+                              "message"
+                            ],
+                            "title": "ErrorDetail",
+                            "x-visible": true
+                          },
+                          "type": "array",
+                          "title": "Details",
+                          "x-visible": true
+                        }
+                      },
+                      "additionalProperties": false,
+                      "type": "object",
+                      "required": [
+                        "code",
+                        "message"
+                      ],
+                      "title": "ErrorBody",
+                      "x-visible": true
+                    }
+                  },
+                  "additionalProperties": false,
+                  "type": "object",
+                  "required": [
+                    "error"
+                  ],
+                  "title": "ErrorEnvelope",
+                  "x-visible": true
+                }
+              }
+            },
+            "description": "申请编号不存在。"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "ok": {
+                      "type": "boolean",
+                      "title": "Ok",
+                      "default": false,
+                      "x-visible": true,
+                      "enum": [
+                        false
+                      ]
+                    },
+                    "error": {
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "title": "Code",
+                          "x-visible": true
+                        },
+                        "message": {
+                          "type": "string",
+                          "title": "Message",
+                          "x-visible": true
+                        },
+                        "details": {
+                          "items": {
+                            "properties": {
+                              "field": {
+                                "type": "string",
+                                "title": "Field",
+                                "default": "",
+                                "x-visible": true
+                              },
+                              "message": {
+                                "type": "string",
+                                "title": "Message",
+                                "x-visible": true
+                              }
+                            },
+                            "additionalProperties": false,
+                            "type": "object",
+                            "required": [
+                              "message"
+                            ],
+                            "title": "ErrorDetail",
+                            "x-visible": true
+                          },
+                          "type": "array",
+                          "title": "Details",
+                          "x-visible": true
+                        }
+                      },
+                      "additionalProperties": false,
+                      "type": "object",
+                      "required": [
+                        "code",
+                        "message"
+                      ],
+                      "title": "ErrorBody",
+                      "x-visible": true
+                    }
+                  },
+                  "additionalProperties": false,
+                  "type": "object",
+                  "required": [
+                    "error"
+                  ],
+                  "title": "ErrorEnvelope",
+                  "x-visible": true
+                }
+              }
+            },
+            "description": "申请作废、重复提交限制、提交 ID 冲突或并发更新冲突。"
+          },
+          "410": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "ok": {
+                      "type": "boolean",
+                      "title": "Ok",
+                      "default": false,
+                      "x-visible": true,
+                      "enum": [
+                        false
+                      ]
+                    },
+                    "error": {
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "title": "Code",
+                          "x-visible": true
+                        },
+                        "message": {
+                          "type": "string",
+                          "title": "Message",
+                          "x-visible": true
+                        },
+                        "details": {
+                          "items": {
+                            "properties": {
+                              "field": {
+                                "type": "string",
+                                "title": "Field",
+                                "default": "",
+                                "x-visible": true
+                              },
+                              "message": {
+                                "type": "string",
+                                "title": "Message",
+                                "x-visible": true
+                              }
+                            },
+                            "additionalProperties": false,
+                            "type": "object",
+                            "required": [
+                              "message"
+                            ],
+                            "title": "ErrorDetail",
+                            "x-visible": true
+                          },
+                          "type": "array",
+                          "title": "Details",
+                          "x-visible": true
+                        }
+                      },
+                      "additionalProperties": false,
+                      "type": "object",
+                      "required": [
+                        "code",
+                        "message"
+                      ],
+                      "title": "ErrorBody",
+                      "x-visible": true
+                    }
+                  },
+                  "additionalProperties": false,
+                  "type": "object",
+                  "required": [
+                    "error"
+                  ],
+                  "title": "ErrorEnvelope",
+                  "x-visible": true
+                }
+              }
+            },
+            "description": "Gone"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "ok": {
+                      "type": "boolean",
+                      "title": "Ok",
+                      "default": false,
+                      "x-visible": true,
+                      "enum": [
+                        false
+                      ]
+                    },
+                    "error": {
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "title": "Code",
+                          "x-visible": true
+                        },
+                        "message": {
+                          "type": "string",
+                          "title": "Message",
+                          "x-visible": true
+                        },
+                        "details": {
+                          "items": {
+                            "properties": {
+                              "field": {
+                                "type": "string",
+                                "title": "Field",
+                                "default": "",
+                                "x-visible": true
+                              },
+                              "message": {
+                                "type": "string",
+                                "title": "Message",
+                                "x-visible": true
+                              }
+                            },
+                            "additionalProperties": false,
+                            "type": "object",
+                            "required": [
+                              "message"
+                            ],
+                            "title": "ErrorDetail",
+                            "x-visible": true
+                          },
+                          "type": "array",
+                          "title": "Details",
+                          "x-visible": true
+                        }
+                      },
+                      "additionalProperties": false,
+                      "type": "object",
+                      "required": [
+                        "code",
+                        "message"
+                      ],
+                      "title": "ErrorBody",
+                      "x-visible": true
+                    }
+                  },
+                  "additionalProperties": false,
+                  "type": "object",
+                  "required": [
+                    "error"
+                  ],
+                  "title": "ErrorEnvelope",
+                  "x-visible": true
+                }
+              }
+            },
+            "description": "请求字段、字段类型或业务取值不合法；error.details 提供校验说明。"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "ok": {
+                      "type": "boolean",
+                      "title": "Ok",
+                      "default": false,
+                      "x-visible": true,
+                      "enum": [
+                        false
+                      ]
+                    },
+                    "error": {
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "title": "Code",
+                          "x-visible": true
+                        },
+                        "message": {
+                          "type": "string",
+                          "title": "Message",
+                          "x-visible": true
+                        },
+                        "details": {
+                          "items": {
+                            "properties": {
+                              "field": {
+                                "type": "string",
+                                "title": "Field",
+                                "default": "",
+                                "x-visible": true
+                              },
+                              "message": {
+                                "type": "string",
+                                "title": "Message",
+                                "x-visible": true
+                              }
+                            },
+                            "additionalProperties": false,
+                            "type": "object",
+                            "required": [
+                              "message"
+                            ],
+                            "title": "ErrorDetail",
+                            "x-visible": true
+                          },
+                          "type": "array",
+                          "title": "Details",
+                          "x-visible": true
+                        }
+                      },
+                      "additionalProperties": false,
+                      "type": "object",
+                      "required": [
+                        "code",
+                        "message"
+                      ],
+                      "title": "ErrorBody",
+                      "x-visible": true
+                    }
+                  },
+                  "additionalProperties": false,
+                  "type": "object",
+                  "required": [
+                    "error"
+                  ],
+                  "title": "ErrorEnvelope",
+                  "x-visible": true
+                }
+              }
+            },
+            "description": "Internal Server Error"
+          }
+        },
+        "description": "根据 app_id 返回该申请当前合并后的全部主表 main 与明细 details，以及 status、version、missing_fields、incomplete_fields、progress 和时间。无请求体、无查询参数。候选人填写后调用此工具取得最终字段；仍有未填项时可继续生成问卷。不会返回简历原始快照、审计流水、内部令牌或填写链接，需要链接时调用 generate_questionnaire。"
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "apiKey": {
+        "type": "apiKey",
+        "in": "header",
+        "name": "X-API-Key",
+        "description": "由平台鉴权配置注入当前服务的 SERVICE_API_KEY；不要写入此文件或模型工具参数。"
+      }
+    }
+  }
+}

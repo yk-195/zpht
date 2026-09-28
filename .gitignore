@@ -1,0 +1,31 @@
+# 依赖与构建产物
+.venv/
+.uv-cache/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+*.egg-info/
+build/
+dist/
+
+# 运行时数据（数据库 / 成稿 / 日志）
+data/
+out/
+*.db
+*.db-journal
+*.db-wal
+
+# 本地工具（cloudflared.exe 等大二进制，不入库）
+tools/
+
+# 本地密钥：仓库里只保留 .env.example，真实 .env 不入库
+.env
+.env.*
+!.env.example
+
+# 编辑器
+.idea/
+.vscode/
+
+# 本地 agent/桌面工具缓存
+.reasonix/

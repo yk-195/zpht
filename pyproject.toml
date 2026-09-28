@@ -1,0 +1,42 @@
+[project]
+name = "questionnaire-service"
+version = "0.1.0"
+description = "求职申请表 · 问卷调查后端服务（写入字段 / 生成问卷 / 接收字段 / 返回字段）"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "fastapi>=0.115.0",
+    "uvicorn[standard]>=0.32.0",
+    "pydantic>=2.9.0",
+    "pydantic-settings>=2.6.0",
+    "sqlalchemy>=2.0.36",
+]
+
+[project.scripts]
+questionnaire-service = "app.main:run"
+
+[dependency-groups]
+dev = [
+    "pytest>=8.3.0",
+    "httpx>=0.27.2",
+    "openapi-spec-validator>=0.7.2,<0.8",
+    "openapi-schema-validator>=0.6.3,<0.7",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["app"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"
+
+[tool.hatch.build.targets.wheel.force-include]
+"static" = "app/web"
+
+[tool.hatch.build.targets.sdist]
+include = ["/app", "/static", "/tests", "/README.md", "/pyproject.toml", "/uv.lock", "/.env.example", "/Questionnaire_Service-20260922-112320.json"]
+exclude = ["**/__pycache__", "**/*.pyc"]

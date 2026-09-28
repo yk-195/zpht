@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>求职申请表 · 问卷管理</title>
+<link rel="stylesheet" href="/static/app.css">
+<script id="client-config" type="application/json">{{client_config}}</script>
+<script src="/static/app.js" defer></script>
+</head>
+<body>
+<header>
+  <h1>求职申请表 · 问卷管理</h1>
+  <div class="row">
+    <label>API Key <input type="password" id="apiKey" autocomplete="off" placeholder="服务启用鉴权时填写"></label>
+    <label>申请编号 <input type="text" id="appId" placeholder="首次写入后自动生成"></label>
+  </div>
+</header>
+<nav class="tabs" id="tabs">
+  <button data-tab="write" class="active">1. 写入初始字段</button>
+  <button data-tab="missing">2. 生成问卷 / 3. 提交字段</button>
+  <button data-tab="info">4. 返回所有字段</button>
+</nav>
+<main>
+  <section id="tab-write" class="active">
+    <h2>1. 写入初始字段</h2>
+    <p class="small muted">在 main 中填写主表字段，在 details 中填写明细。已有申请按非空字段合并。</p>
+    <textarea id="writeBody" aria-label="初始字段 JSON" spellcheck="false"></textarea>
+    <button id="btnWrite" class="primary">写入初始字段</button>
+    <div id="writeResult"></div>
+  </section>
+  <section id="tab-missing">
+    <h2 id="missingTitle">2. 生成并返回问卷</h2>
+    <div class="row" id="consoleBar"><button id="btnMissing" class="primary">生成 / 刷新问卷</button></div>
+    <div id="fillLink"></div>
+    <div id="recognized"></div>
+    <div id="missingSummary"></div>
+    <div id="qform"></div>
+    <div id="submitBox" style="display:none">
+      <h2>3. 提交补充字段</h2>
+      <label><input type="checkbox" id="confirmCheck">以上信息经本人核对无误</label>
+      <button id="btnSubmit" class="primary">提交字段</button>
+    </div>
+    <div id="submitResult" role="status"></div>
+  </section>
+  <section id="tab-info">
+    <h2>4. 返回所有字段</h2>
+    <button id="btnInfo" class="primary">读取全部字段</button>
+    <div id="infoView"></div>
+  </section>
+</main>
+<div class="toast" id="toast" role="status"></div>
+</body>
+</html>
