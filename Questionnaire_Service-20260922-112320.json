@@ -2,12 +2,12 @@
   "openapi": "3.0.3",
   "info": {
     "title": "Questionnaire_Service",
-    "version": "1.0.4",
+    "version": "1.0.5",
     "description": "求职申请表问卷服务插件，适配当前 DTO 分层 API，仅提供四个工具：写入初始字段 → 生成问卷并返回候选人填写链接 → 接收候选人字段 → 返回所有字段。生成问卷只返回 fill_url（候选人填写链接）与进度，**不返回题目本身**。已有 app_id 可直接生成或读取。候选人网页提交与插件提交使用同一申请记录。所有响应为 {ok,data} 或 {ok:false,error}。需要在平台鉴权配置中设置 X-API-Key，密钥不得作为工具输入、示例或会话内容输出。"
   },
   "servers": [
     {
-      "url": "https://beside-jose-chat-wonderful.trycloudflare.com",
+      "url": "http://82.156.254.218",
       "x-plugin-headers": {
         "Content-Type": [
           "application/json"

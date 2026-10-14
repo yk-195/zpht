@@ -1,6 +1,8 @@
 """插件契约与当前服务同步，并按插件定义完成四步流程。"""
 import json
+import re
 from pathlib import Path
+from urllib.parse import urlparse
 
 import pytest
 from openapi_schema_validator import OAS30Validator, OAS31Validator
@@ -160,7 +162,18 @@ def test_plugin_matches_current_service_contract():
     scheme = PLUGIN["components"]["securitySchemes"]["apiKey"]
     assert (scheme["type"], scheme["in"], scheme["name"]) == ("apiKey", "header", "X-API-Key")
     assert "value" not in scheme
-    assert PLUGIN["servers"][0]["url"].startswith("https://")
+    # servers[0].url 必须是平台可达的**公网**地址。
+    # 原断言写死 https，是隧道时代（trycloudflare）的产物；服务改为裸 IP + Nginx 的
+    # 自建部署后，http 是合法形态，因此放宽到 http(s)，但同时补上真正该挡的东西：
+    # 回环与私有网段——平台出网代理会拒私有网段（407 Deny Private Range）。
+    server_url = PLUGIN["servers"][0]["url"]
+    assert re.match(r"^https?://", server_url), f"插件地址必须是 http(s) 绝对地址：{server_url}"
+    host = urlparse(server_url).hostname or ""
+    assert host, f"插件地址缺少主机名：{server_url}"
+    assert not re.match(
+        r"^(localhost|0\.0\.0\.0|127\.|10\.|192\.168\.|172\.(1[6-9]|2\d|3[01])\.|\[?::1\]?$)",
+        host,
+    ), f"插件地址不能是回环或私有网段（平台会 407）：{server_url}"
     assert "X-API-Key" not in PLUGIN["servers"][0]["x-plugin-headers"]
     for method, path, operation in tools.values():
         current = live["paths"][path][method.lower()]
