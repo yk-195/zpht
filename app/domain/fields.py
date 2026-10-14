@@ -74,16 +74,18 @@ _DECLARATIONS = [
 # 明细区：行数与原表一致（学历 2 / 资历 2 / 工作 4 组）；
 # 家庭成员实际上限由 `.env` 的 FAMILY_MAX_ROWS 决定（默认 5，纸表 ZMF-HR-WI-BG-004 只有 4 行）
 # 明细字段元组： (字段名, 类型, 是否必填[, 枚举选项])
+# `required` 指**整块是否必须至少 1 条**（不是行内字段是否必填，那个看 fields 元组）：
+# 家庭成员与工作经验为非必填——应届生可以没有工作经历，家庭成员也可能不便提供。
 DETAILS: list[dict[str, Any]] = [
-    {"key": "家庭成员明细", "label": "家庭成员", "prefix": "家庭", "max": 5,
+    {"key": "家庭成员明细", "label": "家庭成员", "prefix": "家庭", "max": 5, "required": False,
      "fields": [("姓名", "text", True), ("关系", "enum", True, family_relation_options()),
                 ("年龄", "int", False), ("联系电话", "phone", False), ("职业工作单位", "text", False)]},
-    {"key": "学历培训明细", "label": "学历 / 培训", "prefix": "学历", "max": 2,
+    {"key": "学历培训明细", "label": "学历 / 培训", "prefix": "学历", "max": 2, "required": True,
      "fields": [("起始日期", "date", False), ("结束日期", "date", False), ("学校", "text", True),
                 ("专业", "text", False), ("证书学位级别", "text", False)]},
-    {"key": "资历专业资格明细", "label": "资历及专业资格", "prefix": "资格", "max": 2,
+    {"key": "资历专业资格明细", "label": "资历及专业资格", "prefix": "资格", "max": 2, "required": True,
      "fields": [("资格名称", "text", True), ("颁发机构", "text", False), ("颁发日期", "date", False)]},
-    {"key": "工作经验明细", "label": "工作经验", "prefix": "工作", "max": 4,
+    {"key": "工作经验明细", "label": "工作经验", "prefix": "工作", "max": 4, "required": False,
      "fields": [("公司名称", "text", True), ("业务性质", "text", False), ("入职日期", "date", False),
                 ("入职职位", "text", False), ("开始薪资", "money", False), ("离职日期", "date", False),
                 ("离职职位", "text", False), ("最后薪资", "money", False), ("职务简介", "textarea", False),
@@ -408,10 +410,11 @@ def compute_missing(main: dict, details: dict) -> list[str]:
     miss = [f["name"] for f in MAIN_FIELDS
             if field_applicable(f, main) and not str((main or {}).get(f["name"]) or "").strip()]
     for d in DETAILS:
+        if not d["required"]:
+            continue          # 家庭成员 / 工作经验为非必填，整块为空不算未填
         rows = [r for r in ((details or {}).get(d["key"]) or []) if any(str(v).strip() for v in r.values())]
-        need = 0 if d["key"] == "家庭成员明细" else 1   # 家庭成员允许整块为空
-        if len(rows) < need:
-            miss.append(f"{d['label']}（至少 {need} 条）")
+        if not rows:
+            miss.append(f"{d['label']}（至少 1 条）")
     return miss
 
 

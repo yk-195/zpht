@@ -51,7 +51,7 @@ uv run python -m app
 | 步骤 | 方法及路径 | 请求 DTO | 响应 DTO |
 | --- | --- | --- | --- |
 | 写入初始字段 | POST /questionnaires | WriteFieldsRequest | WriteFieldsResponse |
-| 生成并返回问卷 | POST /questionnaires/{app_id}/questionnaire | 无请求体 | QuestionnaireResponse |
+| 生成问卷（只回链接） | POST /questionnaires/{app_id}/questionnaire | 无请求体 | QuestionnaireLinkResponse |
 | 接收返回字段 | POST /questionnaires/{app_id}/answers | SubmitFieldsRequest | SubmitFieldsResponse |
 | 返回所有字段 | GET /questionnaires/{app_id} | 无请求体 | FieldsResponse |
 
@@ -68,9 +68,19 @@ uv run python -m app
 未知顶层参数、未知业务字段和对象类型的字段值返回 422。
 不再支持顶层平铺字段、整体覆盖、客户端指定 IP 等旧参数。
 
-使用返回的 `app_id` 生成问卷，结果包括 `questions`、`contract`、
-`recognized`、`fill_url`、`expires_at`。有效链接重复生成保持不变，过期后重新签发。
+使用返回的 `app_id` 生成问卷。该接口**只返回填写链接与进度**——`fill_url`、
+`expires_at`、`allow_resubmit`、`question_count`、`missing_count`、`incomplete_count`、
+`progress`——**不返回 `questions` / `contract` / `recognized`**：调用方拿到链接转发给候选人即可，
+题目与字段契约由候选人页面自己按令牌从公开接口取。
+有效链接重复生成保持不变，过期后重新签发。
 题目包括未填、不完整字段与可编辑的明细区；条件说明随声明选项生成。
+四个明细区**都会出题**，但整块是否必填不同：**家庭成员与工作经验为非必填**
+（应届生可以没有工作经历，家庭成员也可能不便提供），标记为「选填」；
+学历 / 培训与资历及专业资格仍要求至少 1 条。
+非必填明细区整块为空时**不计入 `missing_fields`**，也不会挡住状态走到 `completed`；
+一旦填了行，行内的必填字段（如家庭成员「姓名 / 关系」、工作经验「公司名称」）仍会校验。
+注意 `missing_fields` 是写入时算好并**存下来**的，改动这类规则后**已有记录会保留旧值**，
+直到它下一次被写入或提交才会刷新。
 
 提交示例：
 
@@ -105,10 +115,12 @@ Object，而不是 String；旧工具若保留了手工出参配置，需要同�
 及本地私有配置中的 `PUBLIC_BASE_URL`。
 
 插件使用 OpenAPI 3.0.3 兼容格式，后端 OpenAPI 仍为 3.1：空值使用 `nullable`，
-常量使用单值 `enum`，所有数组明确声明 `items`。`depends_on` 的实际响应仍为
-`null` 或 `[依赖字段名, [触发值…]]`；3.0 无法精确声明数组位置类型，插件仅将其
-描述为长度为 2 的联合类型数组，位置约束由后端 DTO 保证。不要直接用后端 3.1
-Schema 覆盖插件定义；测试包含独立格式校验及请求、响应数据校验。
+常量使用单值 `enum`，所有数组明确声明 `items`。`questions`、`contract`、`recognized`
+（以及其中的 `depends_on`、`options`）**只出现在候选人公开接口的返回里，不在插件中**——
+生成问卷工具回的是精简的 `QuestionnaireLinkResponse`。若将来要把它们放回插件，注意
+3.0 无法精确声明数组位置类型，`depends_on` 只能写成长度为 2 的联合类型数组，
+位置约束由后端 DTO 保证。不要直接用后端 3.1 Schema 覆盖插件定义；
+测试包含独立格式校验及请求、响应数据校验。
 
 ## 候选人页面
 
@@ -116,6 +128,10 @@ Schema 覆盖插件定义；测试包含独立格式校验及请求、响应数�
 
 - GET /api/v1/public/questionnaires/{token}
 - POST /api/v1/public/questionnaires/{token}/answers
+
+**这两个公开接口是唯一返回完整问卷（`questions` + `contract` + `recognized`）的地方**；
+内部生成接口只给链接。控制台页面在非候选人模式下也走这条路：先调生成接口拿 `fill_url`，
+再从链接里取令牌调公开接口渲染题目。
 
 无效、过期和作废链接统一返回 410。前端和 API 响应禁止缓存，并设置
 `Referrer-Policy: no-referrer`。`uv run python -m app` 默认关闭访问日志，避免记录 URL 令牌；
@@ -141,6 +157,7 @@ uv run pytest
 
 移除二维码、文档渲染、平台插件生成、问卷列表、独立字段契约接口和独立令牌轮换接口。
 旧 `GET /questionnaires/{id}/missing-fields` 改为
-`POST /questionnaires/{id}/questionnaire`；字段契约随问卷一起返回。
+`POST /questionnaires/{id}/questionnaire`；该接口**只返回填写链接与进度**，
+字段契约与题目改由候选人公开接口返回（见上）。
 前端已使用新接口。旧插件和外部调用方需按上表调整，已保存申请编号继续有效。
 历史产物与本地私有配置未删除；不再使用的旧配置项会被忽略。

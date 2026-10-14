@@ -3,8 +3,8 @@ from ..core.config import settings
 from ..domain import fields
 from ..domain.questions import build_questions
 from ..dto.responses import (
-    FieldChange, FieldContract, FieldsResponse, Progress, QuestionnaireResponse,
-    SubmitFieldsResponse, WriteFieldsResponse,
+    FieldChange, FieldContract, FieldsResponse, Progress, QuestionnaireLinkResponse,
+    QuestionnaireResponse, SubmitFieldsResponse, WriteFieldsResponse,
 )
 from ..repositories.models import Questionnaire, Submission, to_iso
 
@@ -25,6 +25,7 @@ def to_write(entity: Questionnaire, created: bool) -> WriteFieldsResponse:
 
 
 def to_questionnaire(entity: Questionnaire, base_url: str) -> QuestionnaireResponse:
+    """完整问卷：只有候选人页面（公开接口）需要，题目与字段契约都在这里。"""
     main, details = entity.main, entity.details
     required_missing = [
         definition["name"] for definition in fields.MAIN_FIELDS
@@ -40,6 +41,20 @@ def to_questionnaire(entity: Questionnaire, base_url: str) -> QuestionnaireRespo
         progress=Progress.model_validate(fields.completion_stats(main, details)),
         fill_url=settings.public_url(f"{settings.questionnaire_prefix}/{entity.token}", base_url),
         expires_at=to_iso(entity.token_expires_at), allow_resubmit=settings.allow_resubmit,
+    )
+
+
+def to_questionnaire_link(entity: Questionnaire, base_url: str) -> QuestionnaireLinkResponse:
+    """生成问卷的返回：只要填写链接与进度，不回传题目本身。"""
+    main, details = entity.main, entity.details
+    return QuestionnaireLinkResponse(
+        app_id=entity.app_id, name=entity.name, status=entity.status,
+        fill_url=settings.public_url(f"{settings.questionnaire_prefix}/{entity.token}", base_url),
+        expires_at=to_iso(entity.token_expires_at), allow_resubmit=settings.allow_resubmit,
+        question_count=len(build_questions(main, details, entity.incomplete_fields)),
+        missing_count=len(entity.missing_fields or []),
+        incomplete_count=len(entity.incomplete_fields or {}),
+        progress=Progress.model_validate(fields.completion_stats(main, details)),
     )
 
 

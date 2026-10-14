@@ -3,7 +3,7 @@ import json
 from pathlib import Path
 
 import pytest
-from openapi_schema_validator import OAS30Validator
+from openapi_schema_validator import OAS30Validator, OAS31Validator
 from openapi_spec_validator import OpenAPIV30SpecValidator
 
 from app.main import app
@@ -130,15 +130,20 @@ def test_plugin_field_values_preserve_null_and_type_restrictions(value, valid):
 
 
 @pytest.mark.parametrize("schema_name", ["Question", "FieldDefinition"])
-def test_plugin_dependency_arrays_preserve_response_values(schema_name):
-    operation = tools_by_name()["generate_questionnaire"][2]
-    response = operation["responses"]["200"]["content"]["application/json"]["schema"]
-    properties = response["properties"]["data"]["properties"]
+def test_dependency_arrays_preserve_response_values(schema_name):
+    """depends_on 的位置约束：第 1 项字符串、第 2 项字符串数组，且长度恒为 2。
+
+    生成接口已不再返回题目与字段契约，这条约束现在只由候选人页面用的公开接口承载，
+    因此改为按后端 OpenAPI(3.1) 校验——插件里已经没有 Question / FieldDefinition 了。
+    """
+    live = app.openapi()
+    response = (live["paths"]["/api/v1/public/questionnaires/{token}"]["get"]
+                ["responses"]["200"]["content"]["application/json"]["schema"])
+    properties = resolve_references(response, live)["properties"]["data"]["properties"]
     model = properties["questions"]["items"] if schema_name == "Question" else (
         properties["contract"]["properties"]["main_fields"]["items"]
     )
-    schema = model["properties"]["depends_on"]
-    validator = OAS30Validator(schema)
+    validator = OAS31Validator(model["properties"]["depends_on"])
     for value in (None, ["是否受过行政处分", ["是"]]):
         validator.validate(value)
     for value in ([], ["少一项"], ["字段", ["是"], "多一项"], ["字段", [1]], [1, ["是"]]):
@@ -202,9 +207,14 @@ def test_plugin_four_tool_flow(api):
     write_example = tools["write_initial_fields"][2]["requestBody"]["content"]["application/json"]["example"]
     written = invoke("write_initial_fields", body=write_example)
     app_id = written["app_id"]
-    questionnaire = invoke("generate_questionnaire", app_id)
-    assert questionnaire["fill_url"].startswith("http://testserver/q/")
-    assert questionnaire["questions"] and questionnaire["contract"]
+    link = invoke("generate_questionnaire", app_id)
+    assert link["fill_url"].startswith("http://testserver/q/")
+    assert link["question_count"] > 0
+    # 生成接口只回链接：题目与字段契约由候选人页面按令牌从公开接口取。
+    token = link["fill_url"].rsplit("/", 1)[1]
+    public = client.get(f"/api/v1/public/questionnaires/{token}")
+    assert public.status_code == 200, public.text
+    assert public.json()["data"]["questions"] and public.json()["data"]["contract"]
     submission_example = tools["submit_fields"][2]["requestBody"]["content"]["application/json"]["example"]
     submitted = invoke("submit_fields", app_id, submission_example)
     assert submitted["main"]["应聘职位"] == "软件开发"

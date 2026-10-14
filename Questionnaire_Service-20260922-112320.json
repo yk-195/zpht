@@ -2,12 +2,12 @@
   "openapi": "3.0.3",
   "info": {
     "title": "Questionnaire_Service",
-    "version": "1.0.2",
-    "description": "求职申请表问卷服务插件，适配当前 DTO 分层 API，仅提供四个工具：写入初始字段 → 生成问卷并返回候选人填写链接 → 接收候选人字段 → 返回所有字段。已有 app_id 可直接生成或读取。候选人网页提交与插件提交使用同一申请记录。所有响应为 {ok,data} 或 {ok:false,error}。需要在平台鉴权配置中设置 X-API-Key，密钥不得作为工具输入、示例或会话内容输出。"
+    "version": "1.0.4",
+    "description": "求职申请表问卷服务插件，适配当前 DTO 分层 API，仅提供四个工具：写入初始字段 → 生成问卷并返回候选人填写链接 → 接收候选人字段 → 返回所有字段。生成问卷只返回 fill_url（候选人填写链接）与进度，**不返回题目本身**。已有 app_id 可直接生成或读取。候选人网页提交与插件提交使用同一申请记录。所有响应为 {ok,data} 或 {ok:false,error}。需要在平台鉴权配置中设置 X-API-Key，密钥不得作为工具输入、示例或会话内容输出。"
   },
   "servers": [
     {
-      "url": "https://desert-created-tours-pharmacies.trycloudflare.com",
+      "url": "https://beside-jose-chat-wonderful.trycloudflare.com",
       "x-plugin-headers": {
         "Content-Type": [
           "application/json"
@@ -868,7 +868,7 @@
         "tags": [
           "Questionnaire_Service"
         ],
-        "summary": "2. 生成并返回问卷",
+        "summary": "2. 生成问卷并返回填写链接",
         "operationId": "generate_questionnaire",
         "parameters": [
           {
@@ -886,19 +886,19 @@
         ],
         "responses": {
           "200": {
-            "description": "操作成功，data 为本接口声明的 DTO。",
+            "description": "操作成功：data 给出候选人填写链接（fill_url）与进度，**不返回题目本身**；题目、字段契约与已识别值由候选人页面通过公开接口按令牌获取。",
             "content": {
               "application/json": {
                 "schema": {
                   "properties": {
                     "ok": {
                       "type": "boolean",
-                      "title": "Ok",
-                      "default": true,
-                      "x-visible": true,
                       "enum": [
                         true
-                      ]
+                      ],
+                      "default": true,
+                      "title": "Ok",
+                      "x-visible": true
                     },
                     "data": {
                       "properties": {
@@ -914,480 +914,44 @@
                         },
                         "status": {
                           "type": "string",
+                          "enum": [
+                            "pending",
+                            "submitted",
+                            "completed",
+                            "void"
+                          ],
                           "title": "Status",
                           "x-visible": true
                         },
-                        "questions": {
-                          "items": {
-                            "properties": {
-                              "name": {
-                                "type": "string",
-                                "title": "Name",
-                                "x-visible": true
-                              },
-                              "label": {
-                                "type": "string",
-                                "title": "Label",
-                                "x-visible": true
-                              },
-                              "kind": {
-                                "type": "string",
-                                "title": "Kind",
-                                "x-visible": true
-                              },
-                              "group": {
-                                "type": "string",
-                                "title": "Group",
-                                "default": "基本信息",
-                                "x-visible": true
-                              },
-                              "required": {
-                                "type": "boolean",
-                                "title": "Required",
-                                "default": false,
-                                "x-visible": true
-                              },
-                              "options": {
-                                "items": {
-                                  "type": "string"
-                                },
-                                "type": "array",
-                                "title": "Options",
-                                "x-visible": true,
-                                "nullable": true
-                              },
-                              "hint": {
-                                "type": "string",
-                                "title": "Hint",
-                                "default": "",
-                                "x-visible": true
-                              },
-                              "current_value": {
-                                "type": "string",
-                                "title": "Current Value",
-                                "default": "",
-                                "x-visible": true
-                              },
-                              "reason": {
-                                "type": "string",
-                                "title": "Reason",
-                                "default": "",
-                                "x-visible": true
-                              },
-                              "reason_text": {
-                                "type": "string",
-                                "title": "Reason Text",
-                                "default": "",
-                                "x-visible": true
-                              },
-                              "section": {
-                                "type": "string",
-                                "title": "Section",
-                                "default": "main",
-                                "x-visible": true
-                              },
-                              "rows": {
-                                "items": {
-                                  "additionalProperties": {
-                                    "anyOf": [
-                                      {
-                                        "type": "string",
-                                        "nullable": true
-                                      },
-                                      {
-                                        "type": "integer"
-                                      },
-                                      {
-                                        "type": "number"
-                                      }
-                                    ]
-                                  },
-                                  "type": "object"
-                                },
-                                "type": "array",
-                                "title": "Rows",
-                                "description": "明细区题目：已导入的行（原样回显，供修改与继续补充）",
-                                "x-visible": true,
-                                "nullable": true
-                              },
-                              "max_rows": {
-                                "type": "integer",
-                                "title": "Max Rows",
-                                "description": "明细区题目：最多几行",
-                                "x-visible": true,
-                                "nullable": true
-                              },
-                              "depends_on": {
-                                "type": "array",
-                                "maxItems": 2,
-                                "minItems": 2,
-                                "items": {
-                                  "anyOf": [
-                                    {
-                                      "type": "string"
-                                    },
-                                    {
-                                      "items": {
-                                        "type": "string"
-                                      },
-                                      "type": "array"
-                                    }
-                                  ]
-                                },
-                                "title": "Depends On",
-                                "description": "声明类字段依赖，值为 null 或长度为 2 的数组：[依赖字段名, [触发值…]]。第 1 项固定为字符串，第 2 项固定为字符串数组；OpenAPI 3.0 仅声明元素类型集合，位置约束由后端 DTO 保证。",
-                                "x-visible": true,
-                                "nullable": true
-                              }
-                            },
-                            "additionalProperties": false,
-                            "type": "object",
-                            "required": [
-                              "name",
-                              "label",
-                              "kind"
-                            ],
-                            "title": "Question",
-                            "description": "问卷里的一道题（未填 / 不完整）。",
-                            "x-visible": true
-                          },
-                          "type": "array",
-                          "title": "Questions",
+                        "fill_url": {
+                          "type": "string",
+                          "title": "Fill Url",
                           "x-visible": true
                         },
-                        "contract": {
-                          "properties": {
-                            "contract_version": {
-                              "type": "string",
-                              "title": "Contract Version",
-                              "x-visible": true
-                            },
-                            "main_fields": {
-                              "items": {
-                                "properties": {
-                                  "name": {
-                                    "type": "string",
-                                    "title": "Name",
-                                    "x-visible": true
-                                  },
-                                  "label": {
-                                    "type": "string",
-                                    "title": "Label",
-                                    "default": "",
-                                    "x-visible": true
-                                  },
-                                  "kind": {
-                                    "type": "string",
-                                    "title": "Kind",
-                                    "x-visible": true
-                                  },
-                                  "required": {
-                                    "type": "boolean",
-                                    "title": "Required",
-                                    "default": false,
-                                    "x-visible": true
-                                  },
-                                  "group": {
-                                    "type": "string",
-                                    "title": "Group",
-                                    "default": "",
-                                    "x-visible": true
-                                  },
-                                  "options": {
-                                    "title": "Options",
-                                    "x-visible": true,
-                                    "anyOf": [
-                                      {
-                                        "items": {
-                                          "type": "string"
-                                        },
-                                        "type": "array",
-                                        "nullable": true
-                                      },
-                                      {
-                                        "type": "string"
-                                      }
-                                    ]
-                                  },
-                                  "hint": {
-                                    "type": "string",
-                                    "title": "Hint",
-                                    "default": "",
-                                    "x-visible": true
-                                  },
-                                  "depends_on": {
-                                    "type": "array",
-                                    "maxItems": 2,
-                                    "minItems": 2,
-                                    "items": {
-                                      "anyOf": [
-                                        {
-                                          "type": "string"
-                                        },
-                                        {
-                                          "items": {
-                                            "type": "string"
-                                          },
-                                          "type": "array"
-                                        }
-                                      ]
-                                    },
-                                    "title": "Depends On",
-                                    "x-visible": true,
-                                    "nullable": true,
-                                    "description": "声明类字段依赖，值为 null 或长度为 2 的数组：[依赖字段名, [触发值…]]。第 1 项固定为字符串，第 2 项固定为字符串数组；OpenAPI 3.0 仅声明元素类型集合，位置约束由后端 DTO 保证。"
-                                  }
-                                },
-                                "additionalProperties": false,
-                                "type": "object",
-                                "required": [
-                                  "name",
-                                  "kind"
-                                ],
-                                "title": "FieldDefinition",
-                                "x-visible": true
-                              },
-                              "type": "array",
-                              "title": "Main Fields",
-                              "x-visible": true
-                            },
-                            "details": {
-                              "items": {
-                                "properties": {
-                                  "key": {
-                                    "type": "string",
-                                    "title": "Key",
-                                    "x-visible": true
-                                  },
-                                  "label": {
-                                    "type": "string",
-                                    "title": "Label",
-                                    "x-visible": true
-                                  },
-                                  "max": {
-                                    "type": "integer",
-                                    "title": "Max",
-                                    "x-visible": true
-                                  },
-                                  "fields": {
-                                    "items": {
-                                      "properties": {
-                                        "name": {
-                                          "type": "string",
-                                          "title": "Name",
-                                          "x-visible": true
-                                        },
-                                        "label": {
-                                          "type": "string",
-                                          "title": "Label",
-                                          "default": "",
-                                          "x-visible": true
-                                        },
-                                        "kind": {
-                                          "type": "string",
-                                          "title": "Kind",
-                                          "x-visible": true
-                                        },
-                                        "required": {
-                                          "type": "boolean",
-                                          "title": "Required",
-                                          "default": false,
-                                          "x-visible": true
-                                        },
-                                        "group": {
-                                          "type": "string",
-                                          "title": "Group",
-                                          "default": "",
-                                          "x-visible": true
-                                        },
-                                        "options": {
-                                          "title": "Options",
-                                          "x-visible": true,
-                                          "anyOf": [
-                                            {
-                                              "items": {
-                                                "type": "string"
-                                              },
-                                              "type": "array",
-                                              "nullable": true
-                                            },
-                                            {
-                                              "type": "string"
-                                            }
-                                          ]
-                                        },
-                                        "hint": {
-                                          "type": "string",
-                                          "title": "Hint",
-                                          "default": "",
-                                          "x-visible": true
-                                        },
-                                        "depends_on": {
-                                          "type": "array",
-                                          "maxItems": 2,
-                                          "minItems": 2,
-                                          "items": {
-                                            "anyOf": [
-                                              {
-                                                "type": "string"
-                                              },
-                                              {
-                                                "items": {
-                                                  "type": "string"
-                                                },
-                                                "type": "array"
-                                              }
-                                            ]
-                                          },
-                                          "title": "Depends On",
-                                          "x-visible": true,
-                                          "nullable": true,
-                                          "description": "声明类字段依赖，值为 null 或长度为 2 的数组：[依赖字段名, [触发值…]]。第 1 项固定为字符串，第 2 项固定为字符串数组；OpenAPI 3.0 仅声明元素类型集合，位置约束由后端 DTO 保证。"
-                                        }
-                                      },
-                                      "additionalProperties": false,
-                                      "type": "object",
-                                      "required": [
-                                        "name",
-                                        "kind"
-                                      ],
-                                      "title": "FieldDefinition",
-                                      "x-visible": true
-                                    },
-                                    "type": "array",
-                                    "title": "Fields",
-                                    "x-visible": true
-                                  }
-                                },
-                                "additionalProperties": false,
-                                "type": "object",
-                                "required": [
-                                  "key",
-                                  "label",
-                                  "max",
-                                  "fields"
-                                ],
-                                "title": "DetailDefinition",
-                                "x-visible": true
-                              },
-                              "type": "array",
-                              "title": "Details",
-                              "x-visible": true
-                            },
-                            "required_main_fields": {
-                              "items": {
-                                "type": "string"
-                              },
-                              "type": "array",
-                              "title": "Required Main Fields",
-                              "x-visible": true
-                            },
-                            "optional_main_fields": {
-                              "items": {
-                                "type": "string"
-                              },
-                              "type": "array",
-                              "title": "Optional Main Fields",
-                              "x-visible": true
-                            },
-                            "never_from_resume": {
-                              "items": {
-                                "type": "string"
-                              },
-                              "type": "array",
-                              "title": "Never From Resume",
-                              "x-visible": true
-                            },
-                            "counts": {
-                              "properties": {
-                                "main_total": {
-                                  "type": "integer",
-                                  "title": "Main Total",
-                                  "x-visible": true
-                                },
-                                "main_required": {
-                                  "type": "integer",
-                                  "title": "Main Required",
-                                  "x-visible": true
-                                },
-                                "detail_sections": {
-                                  "type": "integer",
-                                  "title": "Detail Sections",
-                                  "x-visible": true
-                                },
-                                "detail_rows_total": {
-                                  "type": "integer",
-                                  "title": "Detail Rows Total",
-                                  "x-visible": true
-                                }
-                              },
-                              "additionalProperties": false,
-                              "type": "object",
-                              "required": [
-                                "main_total",
-                                "main_required",
-                                "detail_sections",
-                                "detail_rows_total"
-                              ],
-                              "title": "ContractCounts",
-                              "x-visible": true
-                            }
-                          },
-                          "additionalProperties": false,
-                          "type": "object",
-                          "required": [
-                            "contract_version",
-                            "main_fields",
-                            "details",
-                            "required_main_fields",
-                            "optional_main_fields",
-                            "never_from_resume",
-                            "counts"
-                          ],
-                          "title": "FieldContract",
+                        "expires_at": {
+                          "type": "string",
+                          "nullable": true,
+                          "title": "Expires At",
                           "x-visible": true
                         },
-                        "recognized": {
-                          "additionalProperties": {
-                            "anyOf": [
-                              {
-                                "type": "string",
-                                "nullable": true
-                              },
-                              {
-                                "type": "integer"
-                              },
-                              {
-                                "type": "number"
-                              }
-                            ]
-                          },
-                          "type": "object",
-                          "title": "Recognized",
+                        "allow_resubmit": {
+                          "type": "boolean",
+                          "title": "Allow Resubmit",
                           "x-visible": true
                         },
-                        "missing_fields": {
-                          "items": {
-                            "type": "string"
-                          },
-                          "type": "array",
-                          "title": "Missing Fields",
+                        "question_count": {
+                          "type": "integer",
+                          "title": "Question Count",
                           "x-visible": true
                         },
-                        "required_missing": {
-                          "items": {
-                            "type": "string"
-                          },
-                          "type": "array",
-                          "title": "Required Missing",
+                        "missing_count": {
+                          "type": "integer",
+                          "title": "Missing Count",
                           "x-visible": true
                         },
-                        "incomplete_fields": {
-                          "additionalProperties": {
-                            "type": "string"
-                          },
-                          "type": "object",
-                          "title": "Incomplete Fields",
+                        "incomplete_count": {
+                          "type": "integer",
+                          "title": "Incomplete Count",
                           "x-visible": true
                         },
                         "progress": {
@@ -1435,40 +999,6 @@
                           ],
                           "title": "Progress",
                           "x-visible": true
-                        },
-                        "fill_url": {
-                          "type": "string",
-                          "title": "Fill Url",
-                          "x-visible": true
-                        },
-                        "expires_at": {
-                          "type": "string",
-                          "title": "Expires At",
-                          "x-visible": true,
-                          "nullable": true
-                        },
-                        "allow_resubmit": {
-                          "type": "boolean",
-                          "title": "Allow Resubmit",
-                          "x-visible": true
-                        },
-                        "question_count": {
-                          "type": "integer",
-                          "title": "Question Count",
-                          "readOnly": true,
-                          "x-visible": true
-                        },
-                        "missing_count": {
-                          "type": "integer",
-                          "title": "Missing Count",
-                          "readOnly": true,
-                          "x-visible": true
-                        },
-                        "incomplete_count": {
-                          "type": "integer",
-                          "title": "Incomplete Count",
-                          "readOnly": true,
-                          "x-visible": true
                         }
                       },
                       "additionalProperties": false,
@@ -1477,21 +1007,16 @@
                         "app_id",
                         "name",
                         "status",
-                        "questions",
-                        "contract",
-                        "recognized",
-                        "missing_fields",
-                        "required_missing",
-                        "incomplete_fields",
-                        "progress",
                         "fill_url",
                         "expires_at",
                         "allow_resubmit",
                         "question_count",
                         "missing_count",
-                        "incomplete_count"
+                        "incomplete_count",
+                        "progress"
                       ],
-                      "title": "QuestionnaireResponse",
+                      "description": "生成问卷的返回：只给填写入口与进度，不把题目本身塞回给调用方。\n\n调用方（Agent / 插件）拿到 `fill_url` 转发给候选人即可；\n题目、字段契约与已识别值由候选人页面自己通过公开接口取。",
+                      "title": "Data",
                       "x-visible": true
                     }
                   },
@@ -1499,9 +1024,29 @@
                   "type": "object",
                   "required": [
                     "data"
-                  ],
-                  "title": "Envelope[QuestionnaireResponse]",
-                  "x-visible": true
+                  ]
+                },
+                "example": {
+                  "ok": true,
+                  "data": {
+                    "app_id": "APP-20260919-0001",
+                    "name": "张伟",
+                    "status": "pending",
+                    "fill_url": "https://example.trycloudflare.com/q/9f3k...Q",
+                    "expires_at": "2026-10-05T09:17:45Z",
+                    "allow_resubmit": true,
+                    "question_count": 23,
+                    "missing_count": 31,
+                    "incomplete_count": 0,
+                    "progress": {
+                      "total_fields": 30,
+                      "filled_fields": 2,
+                      "missing_fields": 28,
+                      "required_total": 23,
+                      "required_filled": 2,
+                      "completion_rate": 6.67
+                    }
+                  }
                 }
               }
             }
@@ -2039,7 +1584,7 @@
             "description": "Internal Server Error"
           }
         },
-        "description": "使用 write_initial_fields 返回的 app_id，生成并返回需要候选人补充的问卷。无请求体。结果包含 questions、contract、recognized、fill_url、expires_at、progress；请把 data.fill_url 原样交给候选人填写。有效链接会复用，缺失或过期时重新签发。生成接口不会等待候选人提交；候选人通过页面完成后，调用 get_all_fields 查询最新结果。这里同时返回完整字段契约，不再调用 /fields。"
+        "description": "为指定申请编号签发（或复用）填写令牌，返回候选人填写链接 fill_url、有效期 expires_at、是否允许重复提交 allow_resubmit，以及题目数 question_count 与进度 progress。**不再返回 questions / contract / recognized**——调用方拿到链接转发给候选人即可。"
       }
     },
     "/api/v1/questionnaires/{app_id}/answers": {

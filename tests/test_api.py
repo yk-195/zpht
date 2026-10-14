@@ -21,7 +21,19 @@ def create(client, prefix, **overrides):
 
 
 def generate(client, prefix, app_id):
+    """生成问卷：只返回填写链接与进度，不返回题目本身。"""
     response = client.post(f"{prefix}/questionnaires/{app_id}/questionnaire")
+    assert response.status_code == 200, response.text
+    data = response.json()["data"]
+    # 题目、字段契约、已识别值都不该出现在生成接口的返回里。
+    assert {"questions", "contract", "recognized"}.isdisjoint(data)
+    return data
+
+
+def public_questionnaire(client, prefix, app_id):
+    """签发链接后，按令牌从公开接口取完整问卷（题目在候选人侧）。"""
+    token = generate(client, prefix, app_id)["fill_url"].rsplit("/", 1)[1]
+    response = client.get(f"{prefix}/public/questionnaires/{token}")
     assert response.status_code == 200, response.text
     return response.json()["data"]
 
@@ -32,7 +44,14 @@ def test_four_step_flow(api):
     app_id = written["app_id"]
     assert written["created"] is True
     assert written["main"]["姓名"] == "张伟"
-    questionnaire = generate(client, prefix, app_id)
+    link = generate(client, prefix, app_id)
+    assert link["fill_url"].startswith("http")
+    assert link["question_count"] > 0
+    token = link["fill_url"].rsplit("/", 1)[1]
+    assert client.get(urlsplit(link["fill_url"]).path).status_code == 200
+    public = client.get(f"{prefix}/public/questionnaires/{token}")
+    assert public.status_code == 200
+    questionnaire = public.json()["data"]
     assert questionnaire["question_count"] == len(questionnaire["questions"])
     assert questionnaire["contract"]["counts"]["main_total"] == 34
     family = next(q for q in questionnaire["questions"] if q["name"] == "家庭成员明细")
@@ -40,10 +59,6 @@ def test_four_step_flow(api):
     assert family["max_rows"] == 5
     marriage = next(q for q in questionnaire["questions"] if q["name"] == "婚姻状况")
     assert marriage["options"] == ["未婚", "已婚", "离异", "丧偶"]
-    token = questionnaire["fill_url"].rsplit("/", 1)[1]
-    assert client.get(urlsplit(questionnaire["fill_url"]).path).status_code == 200
-    public = client.get(f"{prefix}/public/questionnaires/{token}")
-    assert public.status_code == 200
     submitted = client.post(f"{prefix}/public/questionnaires/{token}/answers",
                             json={"main": {"婚姻状况": "未婚"}, "confirmed": True})
     assert submitted.status_code == 200, submitted.text
@@ -94,7 +109,7 @@ def test_idcard_derivation_and_incomplete_dates(api):
     assert result["main"]["出生日期"] == "1995-03-12"
     assert result["main"]["性别"] == "男"
     partial = create(client, prefix, main={"姓名": "张伟", "出生日期": "1995-03"})
-    question = generate(client, prefix, partial["app_id"])
+    question = public_questionnaire(client, prefix, partial["app_id"])
     birthday = next(q for q in question["questions"] if q["name"] == "出生日期")
     assert birthday["reason"] == "incomplete"
     response = client.post(f"{prefix}/questionnaires/{partial['app_id']}/answers",
@@ -124,6 +139,42 @@ def test_detail_row_limit(api):
     body = {"main": {"姓名": "张伟"}, "details": {
         "家庭成员明细": [{"姓名": str(i), "关系": "兄"} for i in range(6)]}}
     assert client.post(f"{prefix}/questionnaires", json=body).status_code == 422
+
+
+def test_family_and_work_experience_are_optional(api):
+    """家庭成员与工作经验为非必填：整块为空不算未填，题目标记「选填」。"""
+    client, prefix = api
+    record = create(client, prefix, details={})
+    missing = record["missing_fields"]
+    assert not [item for item in missing if item.startswith("家庭成员")]
+    assert not [item for item in missing if item.startswith("工作经验")]
+    # 另外两个明细区仍然必填，没被一起放开
+    assert [item for item in missing if item.startswith("学历 / 培训")]
+    assert [item for item in missing if item.startswith("资历及专业资格")]
+
+    questions = public_questionnaire(client, prefix, record["app_id"])["questions"]
+    details = {q["name"]: q for q in questions if q["kind"] == "detail"}
+    for name in ("家庭成员明细", "工作经验明细"):
+        assert details[name]["required"] is False, name
+        assert details[name]["reason"] == "optional", name
+        assert "选填" in details[name]["reason_text"], name
+    for name in ("学历培训明细", "资历专业资格明细"):
+        assert details[name]["required"] is True, name
+        assert details[name]["reason"] == "empty", name
+
+
+def test_optional_sections_do_not_block_progress(api):
+    """没填家庭成员与工作经验时，明细区不应再产生「至少 1 条」的未填项。"""
+    client, prefix = api
+    record = create(client, prefix, details={})
+    response = client.post(f"{prefix}/questionnaires/{record['app_id']}/answers",
+                           json={"details": {"学历培训明细": [{"学校": "清华大学"}],
+                                             "资历专业资格明细": [{"资格名称": "系统架构设计师"}]},
+                                 "confirmed": True})
+    assert response.status_code == 200, response.text
+    still_missing = response.json()["data"]["missing_fields"]
+    assert not [item for item in still_missing if "（至少" in item], still_missing
+    assert response.json()["data"]["incomplete_fields"] == {}
 
 
 def test_condition_validation_rolls_back(api):

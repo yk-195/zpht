@@ -327,9 +327,15 @@ async function loadQuestionnaire() {
   $("qform").replaceChildren();
   $("recognized").replaceChildren();
   $("fillLink").replaceChildren();
-  const data = CANDIDATE
-    ? await request("GET", "/public/questionnaires/" + encodeURIComponent(FILL_TOKEN))
-    : await request("POST", "/questionnaires/" + applicationId() + "/questionnaire");
+  let data;
+  if (CANDIDATE) {
+    data = await request("GET", "/public/questionnaires/" + encodeURIComponent(FILL_TOKEN));
+  } else {
+    // 生成问卷接口只回填写链接与进度；题目、字段契约、已识别值改从公开接口按令牌取。
+    const link = await request("POST", "/questionnaires/" + applicationId() + "/questionnaire");
+    const token = link.fill_url.split("/").filter(Boolean).pop();
+    data = await request("GET", "/public/questionnaires/" + encodeURIComponent(token));
+  }
   S.appId = data.app_id;
   S.contract = data.contract;
   S.detailDefs = Object.fromEntries(data.contract.details.map(definition => [definition.key, definition]));

@@ -12,9 +12,12 @@ from ..core.errors import Conflict, LinkExpired, NotFound, ValidationFailed
 from ..domain import fields
 from ..dto.requests import DetailFields, MainFields, SubmitFieldsRequest, WriteFieldsRequest
 from ..dto.responses import (
-    FieldsResponse, QuestionnaireResponse, SubmitFieldsResponse, WriteFieldsResponse,
+    FieldsResponse, QuestionnaireLinkResponse, QuestionnaireResponse,
+    SubmitFieldsResponse, WriteFieldsResponse,
 )
-from ..mappers.questionnaires import to_fields, to_questionnaire, to_submission, to_write
+from ..mappers.questionnaires import (
+    to_fields, to_questionnaire, to_questionnaire_link, to_submission, to_write,
+)
 from ..repositories.models import (
     STATUS_COMPLETED, STATUS_PENDING, STATUS_SUBMITTED, STATUS_VOID,
     Event, Questionnaire, Submission, utcnow,
@@ -29,7 +32,8 @@ class QuestionnaireService:
     def write_initial_fields(self, request: WriteFieldsRequest) -> WriteFieldsResponse:
         self._validate(request.main, request.details)
         if not any(str(value if value is not None else "").strip() for value in request.main.values()) and not any(request.details.values()):
-            raise ValidationFailed("请提供至少一个初始字段")
+            raise ValidationFailed("请提供至少一个初始字段",
+                                   errors=["main / details：至少要有一个非空字段值"])
         main, details = fields.normalize_values(request.main, request.details)
         entity = self.repository.find(request.app_id) if request.app_id else None
         created = entity is None
@@ -61,7 +65,8 @@ class QuestionnaireService:
         self._commit()
         return result
 
-    def generate_questionnaire(self, app_id: str, base_url: str) -> QuestionnaireResponse:
+    def generate_questionnaire(self, app_id: str, base_url: str) -> QuestionnaireLinkResponse:
+        """签发/复用填写令牌，只把填写链接与进度交回调用方（不回传题目）。"""
         entity = self._get(app_id)
         self._ensure_active(entity)
         if not self._token_valid(entity):
@@ -71,7 +76,7 @@ class QuestionnaireService:
             entity.version += 1
             entity.updated_at = utcnow()
             self._audit(entity, "questionnaire_generated", "agent")
-        result = to_questionnaire(entity, base_url)
+        result = to_questionnaire_link(entity, base_url)
         self._commit()
         return result
 

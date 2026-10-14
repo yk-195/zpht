@@ -28,7 +28,7 @@ def build_questions(main: MainFields, details: DetailFields,
             row for row in details.get(definition["key"], [])
             if any(str(value).strip() for value in row.values())
         ]
-        required = definition["key"] != "家庭成员明细"
+        required = bool(definition["required"])
         max_rows = fields.detail_max(definition)
         if rows:
             reason = "imported"

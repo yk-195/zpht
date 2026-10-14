@@ -52,7 +52,7 @@ class FieldDefinition(DTO):
     kind: str
     required: bool = False
     group: str = ""
-    options: list[str] | str | None = None
+    options: list[str] | None = None
     hint: str = ""
     depends_on: tuple[str, list[str]] | None = None
 
@@ -117,6 +117,8 @@ class WriteFieldsResponse(FieldsResponse):
 
 
 class QuestionnaireResponse(DTO):
+    """候选人填写页用的完整问卷；只由公开接口（令牌即凭证）返回。"""
+
     app_id: str
     name: str
     status: str
@@ -145,6 +147,25 @@ class QuestionnaireResponse(DTO):
     @property
     def incomplete_count(self) -> int:
         return len(self.incomplete_fields)
+
+
+class QuestionnaireLinkResponse(DTO):
+    """生成问卷的返回：只给填写入口与进度，不把题目本身塞回给调用方。
+
+    调用方（Agent / 插件）拿到 `fill_url` 转发给候选人即可；
+    题目、字段契约与已识别值由候选人页面自己通过公开接口取。
+    """
+
+    app_id: str
+    name: str
+    status: Literal["pending", "submitted", "completed", "void"]
+    fill_url: str
+    expires_at: str | None
+    allow_resubmit: bool
+    question_count: int
+    missing_count: int
+    incomplete_count: int
+    progress: Progress
 
 
 class SubmitFieldsResponse(FieldsResponse):

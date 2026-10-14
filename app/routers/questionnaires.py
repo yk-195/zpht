@@ -4,7 +4,9 @@ from fastapi import APIRouter, Depends, Request
 from ..core.security import base_url_of, require_api_key
 from ..dto.common import Envelope
 from ..dto.requests import SubmitFieldsRequest, WriteFieldsRequest
-from ..dto.responses import FieldsResponse, QuestionnaireResponse, SubmitFieldsResponse, WriteFieldsResponse
+from ..dto.responses import (
+    FieldsResponse, QuestionnaireLinkResponse, SubmitFieldsResponse, WriteFieldsResponse,
+)
 from .dependencies import Service
 
 router = APIRouter(
@@ -17,9 +19,9 @@ def write_fields(payload: WriteFieldsRequest, service: Service) -> Envelope[Writ
     return Envelope(data=service.write_initial_fields(payload))
 
 
-@router.post("/{app_id}/questionnaire", response_model=Envelope[QuestionnaireResponse],
-             summary="2. 生成并返回问卷")
-def generate_questionnaire(app_id: str, request: Request, service: Service) -> Envelope[QuestionnaireResponse]:
+@router.post("/{app_id}/questionnaire", response_model=Envelope[QuestionnaireLinkResponse],
+             summary="2. 生成问卷并返回填写链接")
+def generate_questionnaire(app_id: str, request: Request, service: Service) -> Envelope[QuestionnaireLinkResponse]:
     return Envelope(data=service.generate_questionnaire(app_id, base_url_of(request)))
 
 
